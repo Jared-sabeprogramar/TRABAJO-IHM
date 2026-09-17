@@ -33,6 +33,7 @@ export class AppComponent {
   private lastHapticAt = 0;
   private lastVoiceCommandId = 0;
   private assistantRequestId = 0;
+  private awaitingVoiceRequestUntil = 0;
   constructor() {
     void this.backend.restore();
     effect(() => {
@@ -46,14 +47,24 @@ export class AppComponent {
   private async respondToVoice(command: VoiceCommand) {
     const heard = this.normalize(command.transcript);
     const wake = /\b(acces|access)\s+(responde|responder|respond)\b/.exec(heard);
-    // Voice detection also silences narration, but only an explicit wake phrase
-    // can trigger a navigation or spoken response.
-    if (!wake) return;
-    const request = heard.slice((wake.index ?? 0) + wake[0].length).trim();
-    if (!request) {
-      this.speech.read(this.language.t('voiceWakeHelp'));
+    // An explicit wake phrase opens a short follow-up window. This lets a
+    // person say "Acces responde", wait for the acknowledgement, then speak
+    // naturally instead of having to fit the whole command in one sentence.
+    let request = '';
+    if (wake) {
+      request = heard.slice((wake.index ?? 0) + wake[0].length).trim();
+    } else if (Date.now() < this.awaitingVoiceRequestUntil) {
+      request = heard;
+      this.awaitingVoiceRequestUntil = 0;
+    } else {
       return;
     }
+    if (!request) {
+      this.awaitingVoiceRequestUntil = Date.now() + 10000;
+      this.speech.read(this.assistantStatus('ready'));
+      return;
+    }
+    this.awaitingVoiceRequestUntil = 0;
     const heardRequest = request;
     const includes = (...phrases: string[]) =>
       phrases.some((phrase) => heardRequest.includes(phrase));
@@ -102,7 +113,7 @@ export class AppComponent {
     }, 550);
     try {
       const { answer } = await this.backend.askAssistant(
-        command.transcript.slice((wake.index ?? 0) + wake[0].length).trim(),
+        request,
         this.language.language(),
       );
       clearTimeout(thinkingTimer);
@@ -113,16 +124,16 @@ export class AppComponent {
         this.speech.read(this.assistantStatus('unavailable'));
     }
   }
-  private assistantStatus(kind: 'thinking' | 'unavailable') {
+  private assistantStatus(kind: 'ready' | 'thinking' | 'unavailable') {
     const copy: Record<string, Record<typeof kind, string>> = {
-      'es-PE': { thinking: 'Un momento.', unavailable: 'No pude responder ahora. Puedes pedirme abrir el lector, el mapa, tus lecturas o configuración.' },
-      'en-US': { thinking: 'One moment.', unavailable: 'I cannot answer right now. You can ask me to open the reader, map, readings, or settings.' },
-      'pt-BR': { thinking: 'Um momento.', unavailable: 'Não consigo responder agora. Você pode pedir para abrir o leitor, mapa, leituras ou configurações.' },
-      'fr-FR': { thinking: 'Un instant.', unavailable: 'Je ne peux pas répondre maintenant. Vous pouvez demander d’ouvrir le lecteur, la carte, les lectures ou les paramètres.' },
-      'it-IT': { thinking: 'Un momento.', unavailable: 'Non posso rispondere ora. Puoi chiedermi di aprire il lettore, la mappa, le letture o le impostazioni.' },
-      'de-DE': { thinking: 'Einen Moment.', unavailable: 'Ich kann gerade nicht antworten. Sie können mich bitten, den Leser, die Karte, Lesungen oder Einstellungen zu öffnen.' },
-      qu: { thinking: 'Suyaykuway.', unavailable: 'Kunanqa mana kutichiyta atini. Qhawayta, mapata, ñawinchaykunata utaq churaykunata kichayta mañaway.' },
-      ay: { thinking: 'Mä juk’a suyt’am.', unavailable: 'Jichhax janiw kutiyiristti. Ulliri, mapa, ullirinaka jan ukax wakicht’awi jist’arañ mayisma.' },
+      'es-PE': { ready: 'Te escucho.', thinking: 'Un momento.', unavailable: 'No pude responder ahora. Puedes pedirme abrir el lector, el mapa, tus lecturas o configuración.' },
+      'en-US': { ready: 'I am listening.', thinking: 'One moment.', unavailable: 'I cannot answer right now. You can ask me to open the reader, map, readings, or settings.' },
+      'pt-BR': { ready: 'Estou ouvindo.', thinking: 'Um momento.', unavailable: 'Não consigo responder agora. Você pode pedir para abrir o leitor, mapa, leituras ou configurações.' },
+      'fr-FR': { ready: 'Je vous écoute.', thinking: 'Un instant.', unavailable: 'Je ne peux pas répondre maintenant. Vous pouvez demander d’ouvrir le lecteur, la carte, les lectures ou les paramètres.' },
+      'it-IT': { ready: 'Ti ascolto.', thinking: 'Un momento.', unavailable: 'Non posso rispondere ora. Puoi chiedermi di aprire il lettore, la mappa, le letture o le impostazioni.' },
+      'de-DE': { ready: 'Ich höre zu.', thinking: 'Einen Moment.', unavailable: 'Ich kann gerade nicht antworten. Sie können mich bitten, den Leser, die Karte, Lesungen oder Einstellungen zu öffnen.' },
+      qu: { ready: 'Uyarishayki.', thinking: 'Suyaykuway.', unavailable: 'Kunanqa mana kutichiyta atini. Qhawayta, mapata, ñawinchaykunata utaq churaykunata kichayta mañaway.' },
+      ay: { ready: 'Ist’asktawa.', thinking: 'Mä juk’a suyt’am.', unavailable: 'Jichhax janiw kutiyiristti. Ulliri, mapa, ullirinaka jan ukax wakicht’awi jist’arañ mayisma.' },
     };
     return copy[this.language.language()]?.[kind] ?? copy['es-PE'][kind];
   }
