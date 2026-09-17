@@ -162,6 +162,19 @@ export class AppComponent {
     if (event.pointerType === 'touch' || event.pointerType === 'pen')
       this.vibrateControl(event.target);
   }
+  @HostListener('document:touchstart', ['$event'])
+  onTouchStart(event: TouchEvent) {
+    const touch = event.touches[0];
+    if (touch) this.vibrateAt(touch.clientX, touch.clientY);
+  }
+  @HostListener('document:touchmove', ['$event'])
+  onTouchMove(event: TouchEvent) {
+    const touch = event.touches[0];
+    if (touch) this.vibrateAt(touch.clientX, touch.clientY);
+  }
+  private vibrateAt(x: number, y: number) {
+    this.vibrateControl(document.elementFromPoint(x, y));
+  }
   private vibrateControl(target: EventTarget | null) {
     if (!(target instanceof Element) || !('vibrate' in navigator)) return;
     const control = target.closest<HTMLElement>(

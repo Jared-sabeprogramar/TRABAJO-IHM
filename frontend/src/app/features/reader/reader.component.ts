@@ -40,6 +40,7 @@ export class ReaderComponent implements OnDestroy {
   private worker?: Worker;
   private timer?: ReturnType<typeof setTimeout>;
   private destroyed = false;
+  private noTextAnnounced = false;
   private setError(message: string) {
     this.error.set(message);
     this.speech.read(message);
@@ -69,9 +70,17 @@ export class ReaderComponent implements OnDestroy {
       this.active.set(true);
       this.preview.set('');
       this.result.set('');
-      this.speech.read(
-        'Cámara activada. Apunta hacia el texto y pulsa leer texto.',
-      );
+      if (this.mode === 'text') {
+        // Hands-free OCR starts from the live camera. No photo is required.
+        this.continuous = true;
+        this.noTextAnnounced = false;
+        this.speech.read(
+          'Cámara activada. La lectura automática está lista. Apunta hacia el texto.',
+          () => this.schedule(300),
+        );
+      } else {
+        this.speech.read('Cámara activada. Apunta hacia la imagen y pulsa describir imagen.');
+      }
     } catch (e) {
       this.stopCamera();
       const name = (e as Error).name;
@@ -91,6 +100,7 @@ export class ReaderComponent implements OnDestroy {
     this.stream = undefined;
     this.active.set(false);
     this.continuous = false;
+    this.noTextAnnounced = false;
     clearTimeout(this.timer);
   }
   switchMode(mode: 'text' | 'image') {
@@ -98,6 +108,7 @@ export class ReaderComponent implements OnDestroy {
     this.result.set('');
     this.error.set('');
     this.continuous = false;
+    this.noTextAnnounced = false;
     clearTimeout(this.timer);
     this.speech.stop();
   }
@@ -173,10 +184,20 @@ export class ReaderComponent implements OnDestroy {
         if (this.destroyed) return;
         const response = await this.worker!.recognize(image);
         text = response.data.text.trim();
-        if (!text)
-          throw new Error(
-            'No encontramos texto. Acércate, mejora la iluminación y vuelve a intentar.',
-          );
+        if (!text) {
+          // The person may aim the live camera at an empty scene before the
+          // sign or document. Keep searching rather than disabling OCR.
+          if (this.continuous) {
+            if (!this.noTextAnnounced) {
+              this.noTextAnnounced = true;
+              this.announce('Aún no encuentro texto. Acerca la cámara y mejora la iluminación.');
+            }
+            this.schedule(1000);
+            return;
+          }
+          throw new Error('No encontramos texto. Acércate, mejora la iluminación y vuelve a intentar.');
+        }
+        this.noTextAnnounced = false;
       } else {
         text = (await this.backend.describe(image, this.speech.settings().lang)).description;
       }
@@ -200,10 +221,10 @@ export class ReaderComponent implements OnDestroy {
       this.busy.set(false);
     }
   }
-  schedule() {
+  schedule(delay = 2500) {
     clearTimeout(this.timer);
     if (this.continuous && this.active() && !this.destroyed)
-      this.timer = setTimeout(() => void this.analyze(), 2500);
+      this.timer = setTimeout(() => void this.analyze(), delay);
   }
   toggleContinuous() {
     if (this.continuous) {
@@ -212,6 +233,7 @@ export class ReaderComponent implements OnDestroy {
         this.setError('Activa la cámara para usar la lectura continua.');
         return;
       }
+      this.noTextAnnounced = false;
       void this.analyze();
     } else clearTimeout(this.timer);
   }
