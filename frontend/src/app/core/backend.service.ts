@@ -115,4 +115,7 @@ export class BackendService {
       'translate-ui', { language, phrases },
     );
   }
+  askAssistant(question: string, language: string) {
+    return this.invoke<{ answer: string }>('voice-assistant', { question, language });
+  }
 }

@@ -31,14 +31,19 @@ export class AppComponent {
   private lastAnnouncement = 0;
   private lastHapticControl?: HTMLElement;
   private lastHapticAt = 0;
+  private lastVoiceCommandId = 0;
+  private assistantRequestId = 0;
   constructor() {
     void this.backend.restore();
     effect(() => {
       const command = this.speech.voiceCommand();
-      if (command) this.respondToVoice(command);
+      if (command && command.id !== this.lastVoiceCommandId) {
+        this.lastVoiceCommandId = command.id;
+        void this.respondToVoice(command);
+      }
     });
   }
-  private respondToVoice(command: VoiceCommand) {
+  private async respondToVoice(command: VoiceCommand) {
     const heard = this.normalize(command.transcript);
     const wake = /\b(acces|access)\s+(responde|responder|respond)\b/.exec(heard);
     // Voice detection also silences narration, but only an explicit wake phrase
@@ -85,7 +90,41 @@ export class AppComponent {
       this.speech.read(this.language.t('voiceOpenReader'));
       return;
     }
-    this.speech.read(this.language.t('voiceCommandUnknown'));
+    // General questions are handled only by the server-side function, so the
+    // Gemini credential is never sent to the browser.
+    const requestId = ++this.assistantRequestId;
+    // Delaying the prompt avoids cancelling it immediately when the answer is
+    // already available from the edge function.
+    const thinkingTimer = setTimeout(() => {
+      if (requestId === this.assistantRequestId) {
+        this.speech.read(this.assistantStatus('thinking'));
+      }
+    }, 550);
+    try {
+      const { answer } = await this.backend.askAssistant(
+        command.transcript.slice((wake.index ?? 0) + wake[0].length).trim(),
+        this.language.language(),
+      );
+      clearTimeout(thinkingTimer);
+      if (requestId === this.assistantRequestId && answer) this.speech.read(answer);
+    } catch {
+      clearTimeout(thinkingTimer);
+      if (requestId === this.assistantRequestId)
+        this.speech.read(this.assistantStatus('unavailable'));
+    }
+  }
+  private assistantStatus(kind: 'thinking' | 'unavailable') {
+    const copy: Record<string, Record<typeof kind, string>> = {
+      'es-PE': { thinking: 'Un momento.', unavailable: 'No pude responder ahora. Puedes pedirme abrir el lector, el mapa, tus lecturas o configuración.' },
+      'en-US': { thinking: 'One moment.', unavailable: 'I cannot answer right now. You can ask me to open the reader, map, readings, or settings.' },
+      'pt-BR': { thinking: 'Um momento.', unavailable: 'Não consigo responder agora. Você pode pedir para abrir o leitor, mapa, leituras ou configurações.' },
+      'fr-FR': { thinking: 'Un instant.', unavailable: 'Je ne peux pas répondre maintenant. Vous pouvez demander d’ouvrir le lecteur, la carte, les lectures ou les paramètres.' },
+      'it-IT': { thinking: 'Un momento.', unavailable: 'Non posso rispondere ora. Puoi chiedermi di aprire il lettore, la mappa, le letture o le impostazioni.' },
+      'de-DE': { thinking: 'Einen Moment.', unavailable: 'Ich kann gerade nicht antworten. Sie können mich bitten, den Leser, die Karte, Lesungen oder Einstellungen zu öffnen.' },
+      qu: { thinking: 'Suyaykuway.', unavailable: 'Kunanqa mana kutichiyta atini. Qhawayta, mapata, ñawinchaykunata utaq churaykunata kichayta mañaway.' },
+      ay: { thinking: 'Mä juk’a suyt’am.', unavailable: 'Jichhax janiw kutiyiristti. Ulliri, mapa, ullirinaka jan ukax wakicht’awi jist’arañ mayisma.' },
+    };
+    return copy[this.language.language()]?.[kind] ?? copy['es-PE'][kind];
   }
   private normalize(text: string) {
     return text
