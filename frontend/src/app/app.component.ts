@@ -45,30 +45,30 @@ export class AppComponent {
       this.speech.read(this.language.t('voiceOpenMap'));
       return;
     }
-    if (includes('lecturas', 'lectura', 'historial', 'readings', 'history', 'leituras', 'historico', 'lectures', 'letture', 'lesungen')) {
+    if (includes('lecturas', 'lectura', 'historial', 'readings', 'history', 'leituras', 'historico', 'lectures', 'letture', 'lesungen', 'nawinchaykuna', 'ullirinaka')) {
       void this.router.navigateByUrl('/recientes');
       this.speech.read(this.language.t('voiceOpenReadings'));
       return;
     }
-    if (includes('configuracion', 'ajustes', 'settings', 'configuracoes', 'parametres', 'impostazioni', 'einstellungen')) {
+    if (includes('configuracion', 'ajustes', 'settings', 'configuracoes', 'parametres', 'impostazioni', 'einstellungen', 'churaykuna', 'wakichtawi')) {
       queueMicrotask(() => this.settingsDialog?.open());
       this.speech.read(this.language.t('voiceOpenSettings'));
       return;
     }
-    if (includes('silenciar', 'apagar voz', 'mute', 'quiet', 'stumm')) {
+    if (includes('silenciar', 'apagar voz', 'mute', 'quiet', 'stumm', 'chinkachiy', 'amuktayana')) {
       this.speech.sound.set(false);
       return;
     }
-    if (includes('activar voz', 'activar sonido', 'unmute', 'sound on', 'ativar voz', 'activer le son', 'attiva voce', 'stimme an')) {
+    if (includes('activar voz', 'activar sonido', 'unmute', 'sound on', 'ativar voz', 'activer le son', 'attiva voce', 'stimme an', 'rimayta kichay', 'aru jistayana')) {
       this.speech.sound.set(true);
       this.speech.read(this.language.t('voiceSoundOn'));
       return;
     }
-    if (includes('ayuda', 'comandos', 'help', 'ajuda', 'aide', 'aiuto', 'hilfe')) {
+    if (includes('ayuda', 'comandos', 'help', 'ajuda', 'aide', 'aiuto', 'hilfe', 'yanapa')) {
       this.speech.read(this.language.t('voiceCommandHelp'));
       return;
     }
-    if (includes('inicio', 'lector', 'leer texto', 'reader', 'home', 'leitor', 'lecteur', 'lettore', 'leser')) {
+    if (includes('inicio', 'lector', 'leer texto', 'reader', 'home', 'leitor', 'lecteur', 'lettore', 'leser', 'qhaway', 'ulliri')) {
       void this.router.navigateByUrl('/');
       this.speech.read(this.language.t('voiceOpenReader'));
       return;
