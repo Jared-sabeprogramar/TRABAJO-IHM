@@ -14,11 +14,27 @@ interface VoiceRecognition {
   interimResults: boolean;
   onstart: (() => void) | null;
   onspeechstart: (() => void) | null;
-  onresult: (() => void) | null;
+  onresult: ((event: VoiceRecognitionEvent) => void) | null;
   onerror: ((event: { error: string }) => void) | null;
   onend: (() => void) | null;
   start(): void;
   abort(): void;
+}
+
+interface VoiceRecognitionEvent {
+  resultIndex: number;
+  results: {
+    length: number;
+    [index: number]: {
+      isFinal: boolean;
+      [index: number]: { transcript: string };
+    };
+  };
+}
+
+export interface VoiceCommand {
+  id: number;
+  transcript: string;
 }
 @Injectable({ providedIn: 'root' })
 export class SpeechService {
@@ -27,6 +43,7 @@ export class SpeechService {
   /** The microphone is only used after the person explicitly enables this option. */
   voiceSensitive = signal(false);
   listening = signal(false);
+  voiceCommand = signal<VoiceCommand | null>(null);
   settings = signal<VoiceSettings>({
     rate: 1,
     lang: 'es-PE',
@@ -38,6 +55,7 @@ export class SpeechService {
   private guidance?: SpeechSynthesisUtterance;
   private voiceRecognition?: VoiceRecognition;
   private voiceRestart?: ReturnType<typeof setTimeout>;
+  private voiceCommandId = 0;
   private voices: SpeechSynthesisVoice[] = [];
   constructor(private language: LanguageService) {
     try {
@@ -118,6 +136,8 @@ export class SpeechService {
       onEnd?.();
       return;
     }
+    const resumeListener = this.voiceSensitive();
+    if (resumeListener) this.stopVoiceListener();
     const u = new SpeechSynthesisUtterance(text);
     this.utterance = u;
     this.configureVoice(u);
@@ -125,25 +145,33 @@ export class SpeechService {
       if (this.utterance === u) {
         this.state.set('idle');
         onEnd?.();
+        if (resumeListener) this.resumeVoiceListener();
       }
     };
     u.onerror = () => {
-      if (this.utterance === u) this.state.set('idle');
+      if (this.utterance === u) {
+        this.state.set('idle');
+        if (resumeListener) this.resumeVoiceListener();
+      }
     };
     this.state.set('reading');
     speechSynthesis.speak(u);
-    if (this.voiceSensitive()) this.startVoiceListener();
   }
   announce(text: string) {
     if (!this.sound() || !this.supported || this.state() !== 'idle') return;
     const message = text.trim().slice(0, 220);
     if (!message) return;
+    const resumeListener = this.voiceSensitive();
+    if (resumeListener) this.stopVoiceListener();
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(message);
     this.guidance = u;
     this.configureVoice(u);
     u.onend = u.onerror = () => {
-      if (this.guidance === u) this.guidance = undefined;
+      if (this.guidance === u) {
+        this.guidance = undefined;
+        if (resumeListener) this.resumeVoiceListener();
+      }
     };
     speechSynthesis.speak(u);
   }
@@ -181,8 +209,7 @@ export class SpeechService {
     recognition.interimResults = true;
     recognition.onstart = () => this.listening.set(true);
     recognition.onspeechstart = () => this.onVoiceDetected();
-    // Some browser implementations do not emit onspeechstart consistently.
-    recognition.onresult = () => this.onVoiceDetected();
+    recognition.onresult = (event) => this.onVoiceResult(event);
     recognition.onerror = (event) => {
       this.listening.set(false);
       if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
@@ -210,6 +237,22 @@ export class SpeechService {
     // Stop only synthesized speech: the microphone remains active to hear the person.
     if (this.state() !== 'idle' || this.guidance) this.stop();
     this.listening.set(true);
+  }
+  private onVoiceResult(event: VoiceRecognitionEvent) {
+    const phrases: string[] = [];
+    for (let index = event.resultIndex; index < event.results.length; index++) {
+      const result = event.results[index];
+      if (result.isFinal) phrases.push(result[0]?.transcript?.trim() || '');
+    }
+    const transcript = phrases.join(' ').trim();
+    if (!transcript) return;
+    this.onVoiceDetected();
+    this.voiceCommand.set({ id: ++this.voiceCommandId, transcript });
+  }
+  private resumeVoiceListener() {
+    clearTimeout(this.voiceRestart);
+    if (this.voiceSensitive())
+      this.voiceRestart = setTimeout(() => this.startVoiceListener(), 350);
   }
   private stopVoiceListener() {
     clearTimeout(this.voiceRestart);

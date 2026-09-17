@@ -1,8 +1,8 @@
-import { Component, HostListener, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Component, HostListener, ViewChild, effect, inject } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { IconComponent } from './shared/icon.component';
 import { SettingsComponent } from './features/reader/settings.component';
-import { SpeechService } from './core/speech.service';
+import { SpeechService, VoiceCommand } from './core/speech.service';
 import { BackendService } from './core/backend.service';
 import { LanguageService } from './core/language.service';
 import { AutoTranslateDirective } from './shared/auto-translate.directive';
@@ -25,10 +25,64 @@ export class AppComponent {
   speech = inject(SpeechService);
   backend = inject(BackendService);
   language = inject(LanguageService);
+  private router = inject(Router);
+  @ViewChild(SettingsComponent) settingsDialog?: SettingsComponent;
   private lastControl?: HTMLElement;
   private lastAnnouncement = 0;
   constructor() {
     void this.backend.restore();
+    effect(() => {
+      const command = this.speech.voiceCommand();
+      if (command) this.respondToVoice(command);
+    });
+  }
+  private respondToVoice(command: VoiceCommand) {
+    const heard = this.normalize(command.transcript);
+    const includes = (...phrases: string[]) =>
+      phrases.some((phrase) => heard.includes(phrase));
+    if (includes('mapa', 'map', 'carte', 'mappa', 'karte')) {
+      void this.router.navigateByUrl('/mapa');
+      this.speech.read(this.language.t('voiceOpenMap'));
+      return;
+    }
+    if (includes('lecturas', 'lectura', 'historial', 'readings', 'history', 'leituras', 'historico', 'lectures', 'letture', 'lesungen')) {
+      void this.router.navigateByUrl('/recientes');
+      this.speech.read(this.language.t('voiceOpenReadings'));
+      return;
+    }
+    if (includes('configuracion', 'ajustes', 'settings', 'configuracoes', 'parametres', 'impostazioni', 'einstellungen')) {
+      queueMicrotask(() => this.settingsDialog?.open());
+      this.speech.read(this.language.t('voiceOpenSettings'));
+      return;
+    }
+    if (includes('silenciar', 'apagar voz', 'mute', 'quiet', 'stumm')) {
+      this.speech.sound.set(false);
+      return;
+    }
+    if (includes('activar voz', 'activar sonido', 'unmute', 'sound on', 'ativar voz', 'activer le son', 'attiva voce', 'stimme an')) {
+      this.speech.sound.set(true);
+      this.speech.read(this.language.t('voiceSoundOn'));
+      return;
+    }
+    if (includes('ayuda', 'comandos', 'help', 'ajuda', 'aide', 'aiuto', 'hilfe')) {
+      this.speech.read(this.language.t('voiceCommandHelp'));
+      return;
+    }
+    if (includes('inicio', 'lector', 'leer texto', 'reader', 'home', 'leitor', 'lecteur', 'lettore', 'leser')) {
+      void this.router.navigateByUrl('/');
+      this.speech.read(this.language.t('voiceOpenReader'));
+      return;
+    }
+    this.speech.read(this.language.t('voiceCommandUnknown'));
+  }
+  private normalize(text: string) {
+    return text
+      .toLocaleLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
   @HostListener('document:pointerover', ['$event'])
   onPointerOver(event: PointerEvent) {

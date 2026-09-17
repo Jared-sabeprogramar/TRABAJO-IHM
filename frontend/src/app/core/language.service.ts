@@ -59,6 +59,57 @@ const accessibilityLabels: Record<string, Partial<Record<AppLanguage, string>>> 
   },
 };
 
+const voiceCommandLabels: Record<AppLanguage, Record<string, string>> = {
+  'es-PE': {
+    voiceCommands: 'Escuchar y responder cuando hablo',
+    voiceCommandsHelp: 'Di: lector, mapa, lecturas, configuración o ayuda. La narración se detiene al hablar y el audio no se guarda.',
+    voiceOpenReader: 'Abriendo el lector visual.', voiceOpenMap: 'Abriendo el mapa accesible.', voiceOpenReadings: 'Abriendo tus lecturas.', voiceOpenSettings: 'Abriendo configuración.', voiceSoundOn: 'Voz activada.',
+    voiceCommandHelp: 'Puedes decir: lector, mapa, lecturas, configuración, activar voz, silenciar o ayuda.', voiceCommandUnknown: 'No reconocí ese comando. Di ayuda para conocer los comandos disponibles.',
+  },
+  'en-US': {
+    voiceCommands: 'Listen and respond when I speak',
+    voiceCommandsHelp: 'Say: reader, map, readings, settings or help. Speech stops while you speak and audio is not stored.',
+    voiceOpenReader: 'Opening the visual reader.', voiceOpenMap: 'Opening the accessible map.', voiceOpenReadings: 'Opening your readings.', voiceOpenSettings: 'Opening settings.', voiceSoundOn: 'Voice enabled.',
+    voiceCommandHelp: 'You can say: reader, map, readings, settings, turn voice on, mute, or help.', voiceCommandUnknown: 'I did not recognize that command. Say help to hear available commands.',
+  },
+  'pt-BR': {
+    voiceCommands: 'Ouvir e responder quando eu falar',
+    voiceCommandsHelp: 'Diga: leitor, mapa, leituras, configurações ou ajuda. A narração para quando você fala e o áudio não é salvo.',
+    voiceOpenReader: 'Abrindo o leitor visual.', voiceOpenMap: 'Abrindo o mapa acessível.', voiceOpenReadings: 'Abrindo suas leituras.', voiceOpenSettings: 'Abrindo configurações.', voiceSoundOn: 'Voz ativada.',
+    voiceCommandHelp: 'Você pode dizer: leitor, mapa, leituras, configurações, ativar voz, silenciar ou ajuda.', voiceCommandUnknown: 'Não reconheci esse comando. Diga ajuda para ouvir os comandos disponíveis.',
+  },
+  'fr-FR': {
+    voiceCommands: 'Écouter et répondre lorsque je parle',
+    voiceCommandsHelp: 'Dites : lecteur, carte, lectures, paramètres ou aide. La narration s’arrête pendant que vous parlez et l’audio n’est pas enregistré.',
+    voiceOpenReader: 'Ouverture du lecteur visuel.', voiceOpenMap: 'Ouverture de la carte accessible.', voiceOpenReadings: 'Ouverture de vos lectures.', voiceOpenSettings: 'Ouverture des paramètres.', voiceSoundOn: 'Voix activée.',
+    voiceCommandHelp: 'Vous pouvez dire : lecteur, carte, lectures, paramètres, activer la voix, couper le son ou aide.', voiceCommandUnknown: 'Je n’ai pas reconnu cette commande. Dites aide pour connaître les commandes.',
+  },
+  'it-IT': {
+    voiceCommands: 'Ascolta e rispondi quando parlo',
+    voiceCommandsHelp: 'Di: lettore, mappa, letture, impostazioni o aiuto. La voce si ferma quando parli e l’audio non viene salvato.',
+    voiceOpenReader: 'Apro il lettore visivo.', voiceOpenMap: 'Apro la mappa accessibile.', voiceOpenReadings: 'Apro le tue letture.', voiceOpenSettings: 'Apro le impostazioni.', voiceSoundOn: 'Voce attivata.',
+    voiceCommandHelp: 'Puoi dire: lettore, mappa, letture, impostazioni, attiva voce, silenzia o aiuto.', voiceCommandUnknown: 'Non ho riconosciuto quel comando. Di aiuto per conoscere i comandi.',
+  },
+  'de-DE': {
+    voiceCommands: 'Zuhören und antworten, wenn ich spreche',
+    voiceCommandsHelp: 'Sagen Sie: Leser, Karte, Lesungen, Einstellungen oder Hilfe. Die Stimme stoppt beim Sprechen und Audio wird nicht gespeichert.',
+    voiceOpenReader: 'Der visuelle Leser wird geöffnet.', voiceOpenMap: 'Die barrierefreie Karte wird geöffnet.', voiceOpenReadings: 'Ihre Lesungen werden geöffnet.', voiceOpenSettings: 'Einstellungen werden geöffnet.', voiceSoundOn: 'Stimme aktiviert.',
+    voiceCommandHelp: 'Sie können sagen: Leser, Karte, Lesungen, Einstellungen, Stimme an, stumm oder Hilfe.', voiceCommandUnknown: 'Diesen Befehl habe ich nicht erkannt. Sagen Sie Hilfe für die Befehle.',
+  },
+  qu: {
+    voiceCommands: 'Rimasqayta uyarispa kutichiy',
+    voiceCommandsHelp: 'Niy: qhaway, mapa, ñawinchaykuna, churaykuna utaq yanapa. Rimaptikiqa rimay sayan, mana waqaychasqachu.',
+    voiceOpenReader: 'Qhaway ñiqita kichashani.', voiceOpenMap: 'Yaykuy mapata kichashani.', voiceOpenReadings: 'Ñawinchaykuykita kichashani.', voiceOpenSettings: 'Churaykunata kichashani.', voiceSoundOn: 'Rimay kichasqa.',
+    voiceCommandHelp: 'Niy atinki: qhaway, mapa, ñawinchaykuna, churaykuna, rimayta kichay, chinkachiy utaq yanapa.', voiceCommandUnknown: 'Chay kamachiyta mana riqsirqanichu. Yanapata niy.',
+  },
+  ay: {
+    voiceCommands: 'Aruskta ist’asina kutiy',
+    voiceCommandsHelp: 'Sasma: ulliri, mapa, ullirinaka, wakicht’awi jan ukax yanapa. Aruskipana arux sayt’i, janiw imatäkiti.',
+    voiceOpenReader: 'Uñjaña ulliri jist’araskiwa.', voiceOpenMap: 'Jikxataña mapa jist’araskiwa.', voiceOpenReadings: 'Ullirinakma jist’araskiwa.', voiceOpenSettings: 'Wakicht’awi jist’araskiwa.', voiceSoundOn: 'Aru jist’aratawa.',
+    voiceCommandHelp: 'Sasma: ulliri, mapa, ullirinaka, wakicht’awi, aru jist’ayaña, amukt’ayaña jan ukax yanapa.', voiceCommandUnknown: 'Uka kamachiy janiw uñt’kti. Yanapa sasma.',
+  },
+};
+
 @Injectable({ providedIn: 'root' })
 export class LanguageService {
   readonly language = signal<AppLanguage>('es-PE');
@@ -69,8 +120,10 @@ export class LanguageService {
   t(key: string) {
     return labels[this.language()][key]
       ?? accessibilityLabels[key]?.[this.language()]
+      ?? voiceCommandLabels[this.language()][key]
       ?? labels['es-PE'][key]
       ?? accessibilityLabels[key]?.['es-PE']
+      ?? voiceCommandLabels['es-PE'][key]
       ?? key;
   }
   voiceTest(language = this.language()) { return voiceTests[language]; }

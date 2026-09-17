@@ -78,8 +78,8 @@ import { LanguageService } from '../../core/language.service';
         [disabled]="!speech.voiceDetectionSupported"
       />
       <span>
-        {{ language.t('voiceSensitive') }}
-        <small>{{ language.t('voiceSensitiveHelp') }}</small>
+        {{ language.t('voiceCommands') }}
+        <small>{{ language.t('voiceCommandsHelp') }}</small>
       </span>
     </label>
     @if (!speech.voiceDetectionSupported) {
