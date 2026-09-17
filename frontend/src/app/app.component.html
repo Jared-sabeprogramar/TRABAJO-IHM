@@ -1,0 +1,56 @@
+<div appAutoTranslate appStatusAnnouncer>
+<a class="skip-link" href="#main">Saltar al contenido</a>
+<header class="topbar">
+  <a routerLink="/" class="brand" aria-label="Acces, inicio"
+    ><app-icon name="scan" /><span
+      >Acces<span class="brand-dot">.</span></span
+    ></a
+  >
+  <nav class="desktop-nav" aria-label="Navegación principal">
+    <a
+      routerLink="/"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: true }"
+      >{{ language.t('reader') }}</a
+    ><a routerLink="/mapa" routerLinkActive="active">{{ language.t('map') }}</a
+    ><a routerLink="/recientes" routerLinkActive="active">{{ language.t('readings') }}</a>
+  </nav>
+  <div class="header-actions">
+    <button
+      class="icon-button"
+      (click)="speech.toggleSound()"
+      [attr.aria-label]="speech.sound() ? language.t('mute') : language.t('unmute')"
+      [attr.aria-pressed]="speech.sound()"
+    >
+      <app-icon [name]="speech.sound() ? 'volume' : 'mute'" /></button
+    ><button
+      class="icon-button"
+      (click)="settings.open()"
+      aria-label="Configuración de lectura"
+    >
+      <app-icon name="settings" /></button
+    ><a class="button small primary" routerLink="/acceder"
+      ><app-icon name="user" />{{ language.t('access') }}</a
+    >
+  </div>
+</header>
+<main id="main" tabindex="-1"><router-outlet /></main>
+<footer class="site-footer">
+  <span class="brand mini"><app-icon name="scan" /> Acces.</span
+  ><span>Más autonomía. Menos barreras.</span
+  ><span>Diseñado para todas las personas</span>
+</footer>
+<nav class="mobile-nav" aria-label="Navegación móvil">
+  <a
+    routerLink="/"
+    routerLinkActive="active"
+    [routerLinkActiveOptions]="{ exact: true }"
+    ><app-icon name="scan" />{{ language.t('reader') }}</a
+  ><a routerLink="/mapa" routerLinkActive="active"
+    ><app-icon name="map" />{{ language.t('map') }}</a
+  ><a routerLink="/recientes" routerLinkActive="active"
+    ><app-icon name="history" />{{ language.t('readings') }}</a
+  >
+</nav>
+<app-settings #settings />
+</div>

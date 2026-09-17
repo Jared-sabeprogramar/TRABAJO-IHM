@@ -1,0 +1,8 @@
+node_modules
+dist
+.angular
+.env
+.env.*
+src/assets/config.local.json
+test-results
+playwright-report

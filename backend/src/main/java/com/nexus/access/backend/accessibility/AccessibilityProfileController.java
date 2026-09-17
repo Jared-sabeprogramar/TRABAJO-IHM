@@ -1,0 +1,4 @@
+package com.nexus.access.backend.accessibility;
+import java.util.UUID; import org.springframework.security.access.prepost.PreAuthorize; import org.springframework.web.bind.annotation.*;
+/** These endpoints will require the authenticated owner's identity in Phase 4. */
+@RestController @RequestMapping("/api/users/{userId}/accessibility") public class AccessibilityProfileController {private final AccessibilityProfileService service; public AccessibilityProfileController(AccessibilityProfileService s){service=s;} @GetMapping @PreAuthorize("#userId.toString() == authentication.name") public AccessibilityProfileResponseDTO get(@PathVariable UUID userId){return service.get(userId);}@PutMapping @PreAuthorize("#userId.toString() == authentication.name") public AccessibilityProfileResponseDTO update(@PathVariable UUID userId,@RequestBody UpdateAccessibilityProfileRequest r){return service.update(userId,r);}}

@@ -1,0 +1,332 @@
+<div class="page map-page">
+  <div reveal class="page-heading">
+    <div>
+      <div class="eyebrow">ACCESIBILIDAD QUE CONSTRUIMOS JUNTOS</div>
+      <h1>Cada reporte <span>abre un camino.</span></h1>
+      <p>
+        Identifica barreras y ayuda a otras personas a moverse con más
+        información.
+      </p>
+    </div>
+    <button class="button primary" (click)="openNewReport()">
+      <app-icon name="plus" /> Reportar una barrera
+    </button>
+  </div>
+  @if (success) {
+    <div class="notice success" role="status">
+      <app-icon name="check" />{{ success }}
+    </div>
+  }
+  @if (adjustingLocation) {
+    <div class="notice" role="status">
+      <span>Toca la entrada o barrera en el mapa, o arrastra el marcador. Tu foto y los datos del reporte se conservan.</span>
+      <button type="button" class="button" (click)="resumeReport()">Volver al reporte</button>
+    </div>
+  }
+  <div class="map-layout">
+    <aside reveal [revealDelay]="80" class="card places-panel">
+      <div class="card-heading">
+        <div>
+          <h2>Lugares reportados</h2>
+          <p>{{ places.length }} lugares · {{ total }} reportes activos</p>
+        </div>
+        <button
+          class="icon-button"
+          (click)="refresh()"
+          [disabled]="loading"
+          aria-label="Actualizar reportes"
+        >
+          <app-icon name="repeat" />
+        </button>
+      </div>
+      <label for="search">Buscar un lugar</label
+      ><input
+        id="search"
+        type="search"
+        placeholder="Nombre del lugar"
+        [(ngModel)]="search"
+        (ngModelChange)="renderMarkers()"
+      /><label for="filter">Mostrar</label
+      ><select
+        id="filter"
+        [(ngModel)]="filter"
+        (ngModelChange)="renderMarkers()"
+      >
+        <option value="all">Todos los reportes</option>
+        <option value="warning">1–2 reportes</option>
+        <option value="high">3 o más reportes</option>
+      </select>
+      @if (loading) {
+        <p class="notice" role="status">Cargando reportes…</p>
+      } @else if (error) {
+        <div class="notice" role="status">
+          <app-icon name="info" />{{ error }}
+        </div>
+      } @else if (!filtered.length) {
+        <div class="empty-state compact">
+          <app-icon name="map" />
+          <h3>No hay reportes que mostrar</h3>
+          <p>
+            {{
+              search
+                ? "Prueba con otro nombre."
+                : "Puedes registrar la primera barrera de tu comunidad."
+            }}
+          </p>
+        </div>
+      }
+      <div class="place-list">
+        @for (place of filtered; track place.id) {
+          <article reveal class="place-item">
+            <span class="pill" [class]="status(place.report_count).level"
+              ><app-icon name="alert" />{{
+                status(place.report_count).label
+              }}</span
+            >
+            <h3>{{ place.name }}</h3>
+            @if (place.categories?.length) {
+              <p class="barrier-types">
+                @for (category of place.categories; track category) {
+                  <span>{{ categories[category] || category }}</span>
+                }
+              </p>
+            }
+            <p>
+              <strong>{{ place.report_count }}</strong>
+              {{
+                place.report_count === 1 ? "reporte activo" : "reportes activos"
+              }}
+            </p>
+            <small
+              >Último reporte:
+              {{ place.last_report_at | date: "dd/MM/yyyy" }}</small
+            >
+            <div class="place-actions">
+              <button class="text-button" (click)="openReport(place)">
+                Reportar aquí <app-icon name="plus" /></button
+              ><a
+                [href]="
+                  'https://www.google.com/maps/search/?api=1&query=' +
+                  place.latitude +
+                  ',' +
+                  place.longitude
+                "
+                target="_blank"
+                rel="noopener"
+                >Ver en Google Maps ↗</a
+              >
+            </div>
+          </article>
+        }
+      </div>
+    </aside>
+    <section class="map-region" aria-label="Mapa de barreras de accesibilidad">
+      <div #map class="google-map" tabindex="-1" [class.unavailable]="!!mapError"></div>
+      <div class="map-location-control">
+        <button
+          type="button"
+          class="button primary"
+          (click)="centerOnCurrentLocation()"
+          [disabled]="mapLocating"
+          aria-describedby="map-location-status"
+        >
+          <app-icon name="locate" />{{ mapLocating ? " Buscando ubicación…" : " Ubicarme en el mapa" }}
+        </button>
+        @if (mapLocating) {
+          <span id="map-location-status" role="status">Centrando el mapa…</span>
+        } @else if (mapLocationError) {
+          <span id="map-location-status" role="alert">{{ mapLocationError }}</span>
+        }
+      </div>
+      @if (mapError) {
+        <div class="map-placeholder">
+          <div class="placeholder-grid" aria-hidden="true"></div>
+          <div class="map-message">
+            <span class="access-symbol"><app-icon name="map" /></span>
+            <h2>Un mapa con todas las voces</h2>
+            <p>{{ mapError }}</p>
+            <span class="pill">No se muestran ubicaciones simuladas</span>
+          </div>
+        </div>
+      } @else {
+        <div class="map-tip">
+          <app-icon name="pin" /> Toca el mapa para seleccionar dónde reportar
+        </div>
+      }
+      <div reveal [revealDelay]="120" class="map-legend">
+        <span><i class="legend-marker warning">!</i> 1–2 reportes</span
+        ><span><i class="legend-marker high">!</i> 3+ reportes</span
+        ><span><i class="legend-marker unknown">?</i> Sin información</span>
+      </div>
+    </section>
+  </div>
+  <div class="notice map-disclaimer">
+    <app-icon name="info" /><span
+      ><strong>Reportes de la comunidad, no una certificación.</strong> Se
+      cuentan reportes activos de los últimos 90 días, uno por DNI declarado y
+      lugar. Tres o más indican una barrera recurrente. Sin reportes no
+      significa accesible. Las quejas se guardan en Acces y no se publican como
+      reseñas de Google.</span
+    >
+  </div>
+</div>
+<dialog #reportDialog aria-labelledby="report-title" (close)="onClose()" (cancel)="onCancel($event)">
+  <div class="dialog-heading">
+    <h2 id="report-title">Reportar una barrera</h2>
+    <button
+      class="icon-button"
+      (click)="close()"
+      [disabled]="saving"
+      aria-label="Cerrar formulario"
+    >
+      <app-icon name="close" />
+    </button>
+  </div>
+  @if (!backend.identity()) {
+    <div class="notice">
+      <app-icon name="user" />
+      <p>
+        Accede con tu DNI para enviar un reporte. No necesitas una contraseña.
+      </p>
+    </div>
+    <a routerLink="/acceder" (click)="close()" class="button primary full"
+      >Acceder <app-icon name="arrow"
+    /></a>
+  } @else {
+    <form (ngSubmit)="submit()">
+      <fieldset [disabled]="saving" class="report-fields">
+      <legend class="sr-only">Datos y foto del reporte</legend>
+      <section class="report-evidence" aria-label="Foto del lugar">
+        <p>Ubica la barrera y toma una foto. Confirma el envío para que la advertencia aparezca en el mapa.</p>
+        <video #reportVideo autoplay muted playsinline [hidden]="!cameraActive" aria-label="Vista de la cámara del lugar"></video>
+        @if (photo) {
+          <img [src]="photo" alt="Foto del lugar que adjuntarás al reporte" />
+          <button type="button" class="text-button" (click)="photo = ''" [disabled]="saving">Quitar foto</button>
+        }
+        @if (cameraOpening) { <p role="status">Solicitando permiso de cámara…</p> }
+        <div class="report-photo-actions">
+          @if (cameraActive) {
+            <button type="button" class="button primary" (click)="capturePhoto()" [disabled]="saving">Tomar foto</button>
+            <button type="button" class="button" (click)="stopCamera()">Apagar cámara</button>
+          } @else {
+            <button type="button" class="button" (click)="startCamera()" [disabled]="cameraOpening || saving">{{ photo ? 'Volver a tomar foto' : 'Activar cámara del lugar' }}</button>
+          }
+          <button type="button" class="button" (click)="photoInput.click()" [disabled]="saving">Adjuntar foto</button>
+        </div>
+        <input #photoInput type="file" accept="image/jpeg,image/png,image/webp" capture="environment" hidden (change)="attachPhoto($event)" />
+        @if (cameraError) { <p class="notice error" role="alert">{{ cameraError }}</p> }
+        <p class="field-help">La foto se guarda como evidencia privada. La ubicación y el tipo de barrera se muestran a la comunidad. Puedes enviar un reporte sin foto si la cámara no está disponible.</p>
+      </section>
+      <label for="place-name">Nombre del lugar</label
+      ><input
+        id="place-name"
+        name="name"
+        [(ngModel)]="form.name"
+        required
+        minlength="3"
+        maxlength="120"
+        placeholder="Ej. Entrada de la biblioteca"
+      />
+      <label>Ubicación de la barrera</label
+      ><button
+        type="button"
+        class="button full"
+        (click)="locate()"
+        [disabled]="locating"
+      >
+        <app-icon name="locate" />{{
+          locating ? "Buscando ubicación…" : "Usar mi ubicación actual"
+        }}
+      </button>
+      @if (locating) {
+        <p role="status">Afinando tu ubicación, hasta 20 segundos. Mantente cerca de la barrera mientras se obtiene la señal.</p>
+        @if (accuracy !== null) {
+          <button type="button" class="button" (click)="useCurrentEstimate()">Usar esta estimación</button>
+        }
+      }
+      @if (accuracy !== null) {
+        <p class="notice" role="status">Precisión aproximada: {{ accuracy }} metros de margen de error. El círculo del mapa representa esa incertidumbre; el punto no es una ubicación exacta.</p>
+        @if (accuracy > 25 && !locating) {
+          <p class="notice error">La señal es poco precisa para identificar una entrada. Activa la ubicación precisa del dispositivo, intenta al aire libre o ajusta el punto.</p>
+          <label class="check-row"><input type="checkbox" name="locationConfirmed" [(ngModel)]="locationConfirmed" />He revisado el punto y corresponde al lugar que quiero reportar.</label>
+        }
+      }
+      @if (locationSource === 'manual') {
+        <p role="status">Punto ajustado manualmente. No tiene una precisión GPS verificada.</p>
+      }
+      <button type="button" class="button full" (click)="adjustLocation()" [disabled]="!map || !!mapError">Ajustar punto en el mapa</button>
+      <p class="field-help">
+        Usa tu ubicación si estás en el lugar. También puedes seleccionar un
+        punto en el mapa antes de abrir este formulario.
+      </p>
+      <div class="coordinate-fields">
+        <div>
+          <label for="latitude">Latitud</label
+          ><input
+            id="latitude"
+            name="latitude"
+            type="number"
+            step="any"
+            min="-90"
+            max="90"
+            required
+            [(ngModel)]="form.latitude"
+            (ngModelChange)="manualLocation()"
+          />
+        </div>
+        <div>
+          <label for="longitude">Longitud</label
+          ><input
+            id="longitude"
+            name="longitude"
+            type="number"
+            step="any"
+            min="-180"
+            max="180"
+            required
+            [(ngModel)]="form.longitude"
+            (ngModelChange)="manualLocation()"
+          />
+        </div>
+      </div>
+      <label for="category">¿Qué barrera encontraste?</label
+      ><select id="category" name="category" [(ngModel)]="form.category">
+        <option value="no_ramp">Falta de rampa</option>
+        <option value="blocked_sidewalk">Vereda obstruida</option>
+        <option value="stairs">Escaleras sin alternativa</option>
+        <option value="narrow_access">Acceso muy estrecho</option>
+        <option value="damaged_surface">Superficie en mal estado</option>
+        <option value="other">Otra barrera</option>
+      </select>
+      <label for="description">Describe el problema</label
+      ><textarea
+        id="description"
+        name="description"
+        rows="3"
+        minlength="10"
+        maxlength="1000"
+        required
+        [(ngModel)]="form.description"
+        placeholder="Explica qué impide el acceso. Evita incluir datos personales."
+      ></textarea
+      ><button type="button" class="button full" (click)="dictate()">
+        <app-icon name="mic" />{{
+          listening ? "Detener dictado" : "Dictar descripción"
+        }}
+      </button>
+      <div class="dialog-footer">
+        <button
+          type="submit"
+          class="button primary full"
+            [disabled]="saving || listening || locating"
+          >
+            {{ saving ? "Guardando foto y reporte…" : "Confirmar y enviar reporte" }}
+        </button>
+      </div>
+      </fieldset>
+    </form>
+  }
+  @if (formError) {
+    <div class="notice error" role="alert">{{ formError }}</div>
+  }
+</dialog>

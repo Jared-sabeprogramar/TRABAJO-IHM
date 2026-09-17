@@ -1,0 +1,50 @@
+# =========================
+# ENV / SECRETS
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# BACKEND - JAVA / MAVEN
+# =========================
+backend/target/
+*.class
+*.jar
+*.war
+
+# =========================
+# FRONTEND - ANGULAR / NODE
+# =========================
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# =========================
+# LOGS
+# =========================
+*.log
+
+# =========================
+# IDE
+# =========================
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+.idea/
+*.iml
+
+# =========================
+# SISTEMA OPERATIVO
+# =========================
+Thumbs.db
+.DS_Store
+
+# =========================
+# TEMPORALES
+# =========================
+tmp/
+temp/
+# Resultados temporales de pruebas
+test-output.txt

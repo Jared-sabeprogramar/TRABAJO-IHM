@@ -1,0 +1,15 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+    container_name: nexus-access-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-4200}:80"
+    volumes:
+      - ./frontend/src/assets/config.local.json:/usr/share/nginx/html/assets/config.local.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost/ >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

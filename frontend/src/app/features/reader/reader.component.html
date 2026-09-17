@@ -1,0 +1,288 @@
+<div class="page reader-page">
+  <div class="page-heading">
+    <div>
+      <div class="eyebrow">
+        <span class="tiny-dot"></span> TU ASISTENTE DE ACCESIBILIDAD
+      </div>
+      <h1>El mundo, <span>a tu alcance.</span></h1>
+      <p>Escucha lo que te rodea. Muévete con más información.</p>
+    </div>
+    <span class="pill heading-pill"
+      ><app-icon name="shield" /> Sin cuenta para leer</span
+    >
+  </div>
+  <div class="reader-layout">
+    <section reveal [revealDelay]="120" class="card reader-card" aria-labelledby="reader-heading">
+      <div class="card-heading">
+        <div class="heading-icon"><app-icon name="scan" /></div>
+        <div>
+          <h2 id="reader-heading">Lector visual</h2>
+          <p>Una nueva forma de ver lo cotidiano</p>
+        </div>
+        <span class="step-label">01 / EXPLORA</span>
+      </div>
+      <div class="mode-tabs" aria-label="Tipo de reconocimiento">
+        <button
+          [class.active]="mode === 'text'"
+          [attr.aria-pressed]="mode === 'text'"
+          (click)="switchMode('text')"
+          [disabled]="busy()"
+        >
+          <app-icon name="text" /> Leer texto</button
+        ><button
+          [class.active]="mode === 'image'"
+          [attr.aria-pressed]="mode === 'image'"
+          (click)="switchMode('image')"
+          [disabled]="busy()"
+        >
+          <app-icon name="image" /> Describir imagen
+        </button>
+      </div>
+      <div
+        class="camera-stage"
+        [class.has-camera]="active() || preview()"
+        [class.result-stage]="!!result()"
+        [attr.aria-busy]="busy()"
+      >
+        <video
+          #video
+          autoplay
+          playsinline
+          muted
+          [hidden]="!active() || !!result()"
+          aria-label="Vista de la cámara"
+        ></video>
+        @if (preview() && !active() && !result()) {
+          <img [src]="preview()" alt="Imagen seleccionada para analizar" />
+        }
+        @if (!active() && !preview() && !result()) {
+          <div class="permission-content">
+            <div class="camera-symbol"><app-icon name="camera" /></div>
+            <h3>
+              {{
+                mode === "text"
+                  ? "Dale voz a lo que ves"
+                  : "Escucha una descripción"
+              }}
+            </h3>
+            <p>
+              {{
+                mode === "text"
+                  ? "Apunta a un cartel, un documento o un letrero. Nosotros lo leemos para ti."
+                  : "Descubre qué aparece en una foto, una pintura o una escena."
+              }}
+            </p>
+            <button
+              class="button primary"
+              (click)="startCamera()"
+              [disabled]="opening()"
+            >
+              <app-icon name="camera" />{{
+                opening() ? "Abriendo cámara…" : "Activar cámara"
+              }}</button
+            ><span class="permission-note"
+              >Te pediremos permiso antes de acceder</span
+            >
+          </div>
+        }
+        @if (active() && !result()) {
+          <div class="viewfinder" aria-hidden="true">
+            <i></i><i></i><i></i><i></i>
+          </div>
+          <span class="camera-caption"
+            >Enfoca {{ mode === "text" ? "el texto" : "la imagen" }} dentro del
+            recuadro</span
+          >
+        }
+        @if (result()) {
+          <div class="recognized-text" tabindex="0">{{ result() }}</div>
+        }
+        @if (busy()) {
+          <div class="processing-overlay" role="status">
+            <span class="spinner"></span
+            ><strong
+              >{{
+                mode === "text" ? "Reconociendo texto" : "Describiendo imagen"
+              }}…</strong
+            ><span>{{
+              mode === "text" ? progress() + "%" : "Puede tomar unos segundos"
+            }}</span>
+          </div>
+        }
+      </div>
+      <div class="camera-status" aria-live="polite">
+        <span class="status-dot" [class.live]="active()"></span
+        >{{
+          busy()
+            ? "Analizando imagen"
+            : result()
+              ? speech.state() === "paused"
+                ? "Lectura pausada"
+                : speech.state() === "reading"
+                  ? "Leyendo en voz alta"
+                  : "Lectura lista"
+              : active()
+                ? "Cámara activa"
+                : preview()
+                  ? "Imagen lista para analizar"
+                  : "Tu cámara está desactivada"
+        }}
+        @if (active()) {
+          <button class="text-button" (click)="stopCamera()">Apagar</button>
+        }
+      </div>
+      @if (speech.listening()) {
+        <p class="voice-listening" role="status">
+          <app-icon name="volume" />
+          {{ language.t('voiceListening') }}
+        </p>
+      }
+      @if (error()) {
+        <div class="notice error" role="alert">
+          <app-icon name="alert" /><span>{{ error() }}</span>
+        </div>
+      }
+      @if (mode === "image") {
+        <p class="notice">
+          <app-icon name="info" /><span
+            >Al describir, enviaremos esta imagen al servicio de IA. Puede
+            cometer errores; no la uses para decidir si es seguro cruzar o
+            desplazarte.</span
+          >
+        </p>
+      }
+      @if (result()) {
+        <div class="playback" aria-label="Controles de lectura">
+          <button
+            (click)="speech.pause()"
+            [disabled]="speech.state() !== 'reading'"
+          >
+            <app-icon name="pause" />Pausar</button
+          ><button
+            (click)="speech.resume()"
+            [disabled]="speech.state() !== 'paused'"
+          >
+            <app-icon name="play" />Continuar</button
+          ><button (click)="speech.read(result())">
+            <app-icon name="repeat" />Repetir</button
+          ><button (click)="stopReading()">
+            <app-icon name="stop" />Detener
+          </button>
+        </div>
+        <button
+          class="button full primary"
+          (click)="newReading()"
+          [disabled]="busy()"
+        >
+          <app-icon name="scan" /> Nueva lectura
+        </button>
+      } @else {
+        <div class="capture-actions">
+          <button
+            class="button primary"
+            (click)="analyze()"
+            [disabled]="busy() || (!active() && !preview())"
+          >
+            <app-icon [name]="mode === 'text' ? 'volume' : 'image'" />{{
+              mode === "text" ? "Leer texto en voz alta" : "Describir imagen"
+            }}</button
+          ><button class="button" (click)="file.click()" [disabled]="busy()">
+            <app-icon name="upload" /> Subir imagen</button
+          ><input
+            #file
+            hidden
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            (change)="upload($event)"
+            tabindex="-1"
+            aria-label="Seleccionar imagen"
+          />
+        </div>
+      }
+      @if (mode === "text") {
+        <label class="continuous-row"
+          ><span
+            ><app-icon name="repeat" /> Lectura continua
+            <small>Detecta nuevos textos automáticamente</small></span
+          ><input
+            type="checkbox"
+            class="switch"
+            [(ngModel)]="continuous"
+            (change)="toggleContinuous()"
+            [disabled]="busy()"
+        /></label>
+      }
+      <div class="privacy-line">
+        <app-icon name="shield" />{{
+          mode === "text"
+            ? "El texto se reconoce en tu dispositivo. Tus imágenes no se guardan."
+            : "La imagen se envía solo al solicitar la descripción; Acces no la almacena."
+        }}
+      </div>
+    </section>
+    <aside class="reader-sidebar">
+      <section reveal [revealDelay]="170" class="card guide-card">
+        <span class="eyebrow">EMPEZAR ES SENCILLO</span>
+        <h2>Tu entorno tiene mucho que decirte.</h2>
+        <ol class="steps">
+          <li reveal [revealDelay]="210">
+            <span>1</span>
+            <div>
+              <h3>Activa tu cámara</h3>
+              <p>O selecciona una imagen de tu dispositivo.</p>
+            </div>
+          </li>
+          <li reveal [revealDelay]="260">
+            <span>2</span>
+            <div>
+              <h3>Apunta y encuadra</h3>
+              <p>Busca buena luz y mantén el celular estable.</p>
+            </div>
+          </li>
+          <li reveal [revealDelay]="310">
+            <span>3</span>
+            <div>
+              <h3>Escucha a tu ritmo</h3>
+              <p>Pausa, repite o ajusta la velocidad de la voz.</p>
+            </div>
+          </li>
+        </ol>
+        <button
+          class="text-button"
+          (click)="
+            speech.read(
+              'Activa tu cámara o sube una imagen. Apunta hacia el texto con buena luz. Pulsa leer texto en voz alta. Puedes pausar, repetir y configurar la velocidad de la voz.'
+            )
+          "
+        >
+          <app-icon name="volume" /> Escuchar instrucciones
+        </button>
+      </section>
+      <a reveal [revealDelay]="340" class="map-promo" routerLink="/mapa"
+        ><div class="promo-top">
+          <span class="promo-icon"><app-icon name="wheel" /></span
+          ><span class="eyebrow">UNA CIUDAD PARA TODOS</span>
+        </div>
+        <h2>Menos barreras.<br />Más caminos.</h2>
+        <p>
+          Consulta y reporta lugares con dificultades de acceso para sillas de
+          ruedas.
+        </p>
+        <span class="promo-link"
+          >Explorar mapa accesible <app-icon name="arrow"
+        /></span>
+        <div class="mini-map" aria-hidden="true">
+          <span class="map-road one"></span><span class="map-road two"></span
+          ><span class="map-road three"></span
+          ><span class="mini-pin a"><app-icon name="pin" /></span
+          ><span class="mini-pin b"><app-icon name="wheel" /></span></div
+      ></a>
+      <div reveal [revealDelay]="390" class="accessibility-note">
+        <app-icon name="check" />
+        <p>
+          Alto contraste, controles grandes y señales que no dependen del color.
+        </p>
+      </div>
+    </aside>
+  </div>
+</div>
