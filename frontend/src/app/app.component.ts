@@ -29,6 +29,8 @@ export class AppComponent {
   @ViewChild(SettingsComponent) settingsDialog?: SettingsComponent;
   private lastControl?: HTMLElement;
   private lastAnnouncement = 0;
+  private lastHapticControl?: HTMLElement;
+  private lastHapticAt = 0;
   constructor() {
     void this.backend.restore();
     effect(() => {
@@ -38,8 +40,18 @@ export class AppComponent {
   }
   private respondToVoice(command: VoiceCommand) {
     const heard = this.normalize(command.transcript);
+    const wake = /\b(acces|access)\s+(responde|responder|respond)\b/.exec(heard);
+    // Voice detection also silences narration, but only an explicit wake phrase
+    // can trigger a navigation or spoken response.
+    if (!wake) return;
+    const request = heard.slice((wake.index ?? 0) + wake[0].length).trim();
+    if (!request) {
+      this.speech.read(this.language.t('voiceWakeHelp'));
+      return;
+    }
+    const heardRequest = request;
     const includes = (...phrases: string[]) =>
-      phrases.some((phrase) => heard.includes(phrase));
+      phrases.some((phrase) => heardRequest.includes(phrase));
     if (includes('mapa', 'map', 'carte', 'mappa', 'karte')) {
       void this.router.navigateByUrl('/mapa');
       this.speech.read(this.language.t('voiceOpenMap'));
@@ -64,8 +76,8 @@ export class AppComponent {
       this.speech.read(this.language.t('voiceSoundOn'));
       return;
     }
-    if (includes('ayuda', 'comandos', 'help', 'ajuda', 'aide', 'aiuto', 'hilfe', 'yanapa')) {
-      this.speech.read(this.language.t('voiceCommandHelp'));
+    if (includes('ayuda', 'comandos', 'help', 'ajuda', 'aide', 'aiuto', 'hilfe', 'yanapa', 'que puedes hacer', 'que haces', 'what can you do', 'o que pode fazer', 'que peux tu faire', 'cosa puoi fare', 'was kannst du', 'interfaz', 'opciones', 'funciones')) {
+      this.speech.read(this.language.t('voiceWakeHelp'));
       return;
     }
     if (includes('inicio', 'lector', 'leer texto', 'reader', 'home', 'leitor', 'lecteur', 'lettore', 'leser', 'qhaway', 'ulliri')) {
@@ -92,7 +104,25 @@ export class AppComponent {
   onPointerDown(event: PointerEvent) {
     if (event.pointerType === 'touch' || event.pointerType === 'pen') {
       this.announceControl(event.target);
+      this.vibrateControl(event.target);
     }
+  }
+  @HostListener('document:pointermove', ['$event'])
+  onPointerMove(event: PointerEvent) {
+    if (event.pointerType === 'touch' || event.pointerType === 'pen')
+      this.vibrateControl(event.target);
+  }
+  private vibrateControl(target: EventTarget | null) {
+    if (!(target instanceof Element) || !('vibrate' in navigator)) return;
+    const control = target.closest<HTMLElement>(
+      'button, a[href], input, select, textarea, [role="button"], [role="switch"]',
+    );
+    if (!control || control.getAttribute('aria-hidden') === 'true' || control.matches(':disabled')) return;
+    const now = Date.now();
+    if (this.lastHapticControl === control && now - this.lastHapticAt < 800) return;
+    this.lastHapticControl = control;
+    this.lastHapticAt = now;
+    navigator.vibrate(18);
   }
   private announceControl(target: EventTarget | null) {
     if (!(target instanceof Element)) return;
