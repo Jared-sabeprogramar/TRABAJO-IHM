@@ -31,6 +31,9 @@ export class AppComponent {
   private lastAnnouncement = 0;
   private lastHapticControl?: HTMLElement;
   private lastHapticAt = 0;
+  private lastWordNode?: Text;
+  private lastWordStart = -1;
+  private lastWordAt = 0;
   private lastVoiceCommandId = 0;
   private assistantRequestId = 0;
   private awaitingVoiceRequestUntil = 0;
@@ -142,19 +145,17 @@ export class AppComponent {
   }
   @HostListener('document:pointerover', ['$event'])
   onPointerOver(event: PointerEvent) {
-    if (event.pointerType !== 'touch') this.announceControl(event.target);
+    if (event.pointerType !== 'touch') this.exploreAt(event.clientX, event.clientY);
   }
   @HostListener('document:pointerdown', ['$event'])
   onPointerDown(event: PointerEvent) {
-    if (event.pointerType === 'touch' || event.pointerType === 'pen') {
-      this.announceControl(event.target);
-      this.vibrateControl(event.target);
-    }
+    if (event.pointerType === 'touch' || event.pointerType === 'pen')
+      this.exploreAt(event.clientX, event.clientY);
   }
   @HostListener('document:pointermove', ['$event'])
   onPointerMove(event: PointerEvent) {
     if (event.pointerType === 'touch' || event.pointerType === 'pen')
-      this.vibrateControl(event.target);
+      this.exploreAt(event.clientX, event.clientY);
   }
   @HostListener('document:touchstart', ['$event'])
   onTouchStart(event: TouchEvent) {
@@ -170,14 +171,46 @@ export class AppComponent {
     const target = document.elementFromPoint(x, y);
     // On Android this gives a short haptic pulse. On iPhone, Safari does not
     // expose web vibration, so the same gesture still announces the control.
-    this.announceControl(target);
-    this.vibrateControl(target);
+    if (this.controlAt(target)) {
+      this.announceControl(target);
+      this.vibrateControl(target);
+      return;
+    }
+    this.announceWordAt(x, y);
+  }
+  private controlAt(target: EventTarget | null) {
+    return target instanceof Element
+      ? target.closest<HTMLElement>('button, a[href], input, select, textarea, [role="button"], [role="switch"]')
+      : null;
+  }
+  private announceWordAt(x: number, y: number) {
+    const documentWithCaret = document as Document & {
+      caretRangeFromPoint?: (x: number, y: number) => Range | null;
+    };
+    const position = document.caretPositionFromPoint?.(x, y);
+    const range = position ? undefined : documentWithCaret.caretRangeFromPoint?.(x, y);
+    const node = position?.offsetNode ?? range?.startContainer;
+    const offset = position?.offset ?? range?.startOffset;
+    if (!(node instanceof Text) || offset === undefined || node.parentElement?.closest('[aria-hidden="true"]')) return;
+    const text = node.data;
+    const isWordCharacter = (character: string) => /[\p{L}\p{N}]/u.test(character);
+    let start = Math.min(Math.max(offset, 0), text.length);
+    if (!isWordCharacter(text[start] ?? '') && isWordCharacter(text[start - 1] ?? '')) start--;
+    if (!isWordCharacter(text[start] ?? '')) return;
+    while (start > 0 && isWordCharacter(text[start - 1])) start--;
+    let end = start;
+    while (end < text.length && isWordCharacter(text[end])) end++;
+    const now = Date.now();
+    if (this.lastWordNode === node && this.lastWordStart === start && now - this.lastWordAt < 700) return;
+    if (now - this.lastWordAt < 260) return;
+    this.lastWordNode = node;
+    this.lastWordStart = start;
+    this.lastWordAt = now;
+    this.speech.announce(text.slice(start, end));
   }
   private vibrateControl(target: EventTarget | null) {
     if (!(target instanceof Element) || !('vibrate' in navigator)) return;
-    const control = target.closest<HTMLElement>(
-      'button, a[href], input, select, textarea, [role="button"], [role="switch"]',
-    );
+    const control = this.controlAt(target);
     if (!control || control.getAttribute('aria-hidden') === 'true' || control.matches(':disabled')) return;
     const now = Date.now();
     if (this.lastHapticControl === control && now - this.lastHapticAt < 800) return;
@@ -187,9 +220,7 @@ export class AppComponent {
   }
   private announceControl(target: EventTarget | null) {
     if (!(target instanceof Element)) return;
-    const control = target.closest<HTMLElement>(
-      'button, a[href], input, select, textarea, [role="button"], [role="switch"]',
-    );
+    const control = this.controlAt(target);
     if (!control || control.getAttribute('aria-hidden') === 'true') return;
     const now = Date.now();
     if (this.lastControl === control && now - this.lastAnnouncement < 1200)
