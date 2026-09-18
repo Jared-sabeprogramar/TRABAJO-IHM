@@ -66,8 +66,8 @@ test('captura GPS y foto, espera confirmación y actualiza la advertencia', asyn
 
 test('permisos denegados conservan alternativas y no envían el reporte', async ({ page }) => {
   await prepare(page, true);
-  await expect(page.getByText('No se permitió la cámara.', { exact: false })).toBeVisible();
-  await expect(page.getByText('No se pudo obtener tu ubicación.', { exact: false })).toBeVisible();
+  await expect(page.getByText('Necesitamos permiso para usar la cámara.', { exact: false })).toBeVisible();
+  await expect(page.getByText('No pudimos usar tu ubicación.', { exact: false })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Adjuntar foto', exact: true })).toBeEnabled();
   await expect(page.getByLabel('Latitud', { exact: true })).toBeEditable();
   await page.getByRole('button', { name: 'Cerrar formulario' }).click();

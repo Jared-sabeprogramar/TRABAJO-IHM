@@ -14,7 +14,7 @@ export class MapsService {
 
     if (!apiKey) {
       throw new Error(
-        'Google Maps no está configurado. Define GOOGLE_MAPS_API_KEY en frontend/.env.local y reinicia npm start. Los reportes siguen disponibles en la lista.',
+        'No pudimos mostrar el mapa en este momento. Puedes consultar los reportes y registrar una barrera.',
       );
     }
 
@@ -27,7 +27,7 @@ export class MapsService {
         const timeout = setTimeout(
           () =>
             reject(
-              new Error('Google Maps tardó demasiado. Comprueba tu conexión.'),
+              new Error('El mapa tardó demasiado. Revisa tu conexión e inténtalo nuevamente.'),
             ),
           20000,
         );
@@ -40,7 +40,7 @@ export class MapsService {
           clearTimeout(timeout);
           reject(
             new Error(
-              'No se pudo autorizar Google Maps. Revisa la configuración de la clave.',
+              'No pudimos mostrar el mapa en este momento. Inténtalo nuevamente más tarde.',
             ),
           );
         };
@@ -54,7 +54,7 @@ export class MapsService {
         script.async = true;
         script.onerror = () => {
           clearTimeout(timeout);
-          reject(new Error('No se pudo cargar Google Maps.'));
+          reject(new Error('No pudimos mostrar el mapa. Inténtalo nuevamente.'));
         };
         document.head.appendChild(script);
       });

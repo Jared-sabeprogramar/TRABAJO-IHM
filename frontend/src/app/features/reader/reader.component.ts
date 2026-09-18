@@ -64,7 +64,7 @@ export class ReaderComponent implements OnDestroy {
     try {
       if (!navigator.mediaDevices?.getUserMedia)
         throw new Error(
-          'La cámara necesita HTTPS o localhost. También puedes subir una imagen.',
+          'No pudimos abrir la cámara aquí. También puedes subir una imagen.',
         );
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: 'environment' }, width: { ideal: 1600 } },
@@ -97,7 +97,7 @@ export class ReaderComponent implements OnDestroy {
       const name = (e as Error).name;
       this.setError(
         name === 'NotAllowedError'
-          ? 'No tenemos permiso para usar la cámara. Habilítalo en tu navegador o sube una imagen.'
+          ? 'Necesitamos permiso para usar la cámara. Actívalo en tu dispositivo o sube una imagen.'
           : name === 'NotFoundError'
             ? 'No encontramos una cámara. Puedes subir una imagen.'
             : (e as Error).message || 'No se pudo abrir la cámara.',

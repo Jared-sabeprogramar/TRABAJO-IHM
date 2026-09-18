@@ -55,7 +55,7 @@ test('lector, navegación, configuración y vista móvil accesibles', async ({
     page.getByRole('heading', { name: 'Cada reporte abre un camino.' }),
   ).toBeVisible();
   await expect(page.locator('.map-placeholder')).toBeVisible();
-  await expect(page.getByText('Google Maps no está configurado. Define GOOGLE_MAPS_API_KEY en frontend/.env.local y reinicia npm start. Los reportes siguen disponibles en la lista.')).toBeVisible();
+  await expect(page.getByText('No pudimos mostrar el mapa en este momento. Puedes consultar los reportes y registrar una barrera.')).toBeVisible();
   await page
     .getByRole('button', { name: 'Reportar una barrera', exact: true })
     .click();
@@ -111,7 +111,7 @@ test('permiso de cámara denegado muestra alternativa', async ({ page }) => {
   );
   await page.goto('/');
   await page.getByRole('button', { name: 'Activar cámara' }).click();
-  await expect(page.getByRole('alert')).toContainText('No tenemos permiso');
+  await expect(page.getByRole('alert')).toContainText('Necesitamos permiso');
   await expect(
     page.getByRole('button', { name: 'Subir imagen' }),
   ).toBeEnabled();

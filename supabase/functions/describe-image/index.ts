@@ -13,7 +13,7 @@ serve(async (req) => {
   if (!key)
     throw new HttpError(
       503,
-      "La descripción de imágenes aún no está conectada. Puedes seguir usando la lectura de textos.",
+      "No pudimos describir la imagen por ahora. Inténtalo nuevamente más tarde.",
     );
   await quota(ctx, "describe", 20);
   const input = await body(req, 2500000);
@@ -66,11 +66,7 @@ serve(async (req) => {
     });
     const message = upstream.status === 429
       ? "El servicio de descripción alcanzó su límite. Intenta más tarde."
-      : upstream.status === 401 || upstream.status === 403
-        ? "La clave de Gemini no tiene permiso para usar la descripción de imágenes. Revisa la clave y que Gemini API esté habilitada."
-        : upstream.status === 400 || upstream.status === 404
-          ? `Gemini no pudo usar el modelo ${model} (HTTP ${upstream.status}). Revisa que la clave tenga Gemini API habilitada.`
-          : "No se pudo describir la imagen. Intenta nuevamente.";
+      : "No pudimos describir la imagen. Inténtalo nuevamente.";
     throw new HttpError(upstream.status === 429 ? 429 : 502, message);
   }
   const result = await upstream.json();

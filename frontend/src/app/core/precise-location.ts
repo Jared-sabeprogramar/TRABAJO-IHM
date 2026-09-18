@@ -34,13 +34,13 @@ export function preciseLocation(
       if (accuracy <= 10) complete();
     }, error => {
       if (stopped) return;
-      if (error.code === 1) complete('No se pudo obtener tu ubicación. Permite la ubicación precisa del navegador o selecciona el punto en el mapa.');
+      if (error.code === 1) complete('No pudimos usar tu ubicación. Permítela en tu dispositivo o selecciona el punto en el mapa.');
       // A transient GPS timeout can be followed by a better fix before our deadline.
     }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
     // Also supports providers that invoke callbacks before returning the watch ID.
     if (stopped) geolocation.clearWatch(watch);
   } catch {
-    complete('No se pudo obtener tu ubicación. Selecciona el punto en el mapa o escribe las coordenadas.');
+    complete('No pudimos usar tu ubicación. Selecciona el punto en el mapa.');
   }
   return stop;
 }

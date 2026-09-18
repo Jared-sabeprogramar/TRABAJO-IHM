@@ -23,7 +23,7 @@ serve(async (req) => {
   if (cached && cached.expires > Date.now()) return response(req, cached.data);
   const key = Deno.env.get("GEMINI_API_KEY");
   const model = Deno.env.get("GEMINI_VISION_MODEL") || "gemini-3.5-flash-lite";
-  if (!key) throw new HttpError(503, "La traducción aún no está conectada.");
+  if (!key) throw new HttpError(503, "No pudimos cambiar el idioma por ahora. Inténtalo nuevamente más tarde.");
   const upstream = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
     {

@@ -40,7 +40,7 @@ export class BackendService {
       .then(async (c) => {
         if (!c.supabaseUrl || !c.supabaseAnonKey)
           throw new Error(
-            'El servicio comunitario aún no está conectado. Puedes usar el lector de textos sin acceder.',
+            'El mapa comunitario no está disponible por ahora. Puedes seguir usando el lector.',
           );
         const { createClient } = await import('@supabase/supabase-js');
         this.client = createClient(c.supabaseUrl, c.supabaseAnonKey);
@@ -59,7 +59,7 @@ export class BackendService {
       const r = await c.auth.signInAnonymously();
       if (r.error)
         throw new Error(
-          'No se pudo iniciar el acceso. Comprueba que las sesiones anónimas estén habilitadas en Supabase.',
+          'No pudimos iniciar el acceso. Inténtalo nuevamente.',
         );
     }
     return c;

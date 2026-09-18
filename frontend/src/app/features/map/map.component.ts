@@ -397,7 +397,7 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     this.cameraOpening = true;
     this.cameraError = '';
     try {
-      if (!navigator.mediaDevices?.getUserMedia) throw new Error('La cámara necesita HTTPS o localhost. Puedes adjuntar una foto del lugar.');
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error('No pudimos abrir la cámara aquí. Puedes adjuntar una foto del lugar.');
       let stream: MediaStream;
       try {
         // Prefer the rear camera for documenting a barrier. Some phones expose
@@ -427,7 +427,7 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       this.stopCamera();
       const name = (error as DOMException).name;
       this.cameraError = name === 'NotAllowedError'
-        ? 'No se permitió la cámara. Activa el permiso de cámara del navegador o adjunta una foto.'
+        ? 'Necesitamos permiso para usar la cámara. Actívalo en tu dispositivo o adjunta una foto.'
         : name === 'NotFoundError'
           ? 'No se encontró una cámara disponible. Cierra otra app que esté usando la cámara, revisa el permiso o adjunta una foto.'
           : name === 'NotReadableError'
@@ -499,7 +499,7 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     this.formError = '';
     if (!navigator.geolocation) {
       this.formError =
-        'Tu navegador no ofrece ubicación. Selecciona el punto en el mapa o escribe sus coordenadas.';
+        'No pudimos usar tu ubicación. Selecciona el punto en el mapa.';
       this.locating = false;
       return;
     }

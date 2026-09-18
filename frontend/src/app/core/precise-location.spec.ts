@@ -46,7 +46,7 @@ describe('Precise location acquisition', () => {
   it('stops on permission denial and reports missing location at the deadline', fakeAsync(() => {
     preciseLocation(geo, update, finish);
     error({ code: 1 } as GeolocationPositionError);
-    expect(finish.calls.mostRecent().args[0]).toContain('Permite la ubicación precisa');
+    expect(finish.calls.mostRecent().args[0]).toContain('Permítela en tu dispositivo');
     preciseLocation(geo, update, finish);
     tick(20000);
     expect(finish.calls.mostRecent().args[0]).toContain('No se pudo obtener');
