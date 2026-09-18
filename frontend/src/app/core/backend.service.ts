@@ -137,6 +137,6 @@ export class BackendService {
     return this.invoke<{ saved: boolean }>('community-feedback', { placeId, state });
   }
   askAssistant(question: string, language: string) {
-    return this.invoke<{ answer: string }>('voice-assistant', { question, language });
+    return this.invoke<{ answer: string; intent?: string }>('voice-assistant', { question, language });
   }
 }

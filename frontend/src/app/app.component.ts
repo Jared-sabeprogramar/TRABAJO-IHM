@@ -75,78 +75,48 @@ export class AppComponent {
       return;
     }
     this.awaitingVoiceRequestUntil = 0;
-    const heardRequest = request;
-    const includes = (...phrases: string[]) =>
-      phrases.some((phrase) => heardRequest.includes(phrase));
     const reply = (text: string) => this.speech.assistant(text, () => this.speech.endAssistantTurn());
-    if (includes('mapa', 'map', 'carte', 'mappa', 'karte', 'barrera', 'barreras', 'reporte', 'reportar', 'calle', 'avenida', 'direccion', 'ubicacion', 'localizar', 'ruta')) {
-      void this.router.navigateByUrl('/mapa');
-      reply(this.language.t('voiceOpenMap'));
-      return;
-    }
-    if (includes('lecturas', 'lectura', 'historial', 'readings', 'history', 'leituras', 'historico', 'lectures', 'letture', 'lesungen', 'nawinchaykuna', 'ullirinaka', 'anterior', 'anteriores', 'guardado', 'reciente', 'recientes')) {
-      void this.router.navigateByUrl('/recientes');
-      reply(this.language.t('voiceOpenReadings'));
-      return;
-    }
-    if (includes('configuracion', 'ajustes', 'settings', 'configuracoes', 'parametres', 'impostazioni', 'einstellungen', 'churaykuna', 'wakichtawi', 'idioma', 'voz', 'velocidad', 'volumen', 'letra', 'contraste')) {
-      queueMicrotask(() => this.settingsDialog?.open());
-      reply(this.language.t('voiceOpenSettings'));
-      return;
-    }
-    if (includes('silenciar', 'apagar voz', 'mute', 'quiet', 'stumm', 'chinkachiy', 'amuktayana')) {
-      this.speech.sound.set(false);
-      this.speech.endAssistantTurn();
-      return;
-    }
-    if (includes('activar voz', 'activar sonido', 'unmute', 'sound on', 'ativar voz', 'activer le son', 'attiva voce', 'stimme an', 'rimayta kichay', 'aru jistayana')) {
-      this.speech.sound.set(true);
-      reply(this.language.t('voiceSoundOn'));
-      return;
-    }
-    if (includes('ayuda', 'comandos', 'help', 'ajuda', 'aide', 'aiuto', 'hilfe', 'yanapa', 'que puedes hacer', 'que haces', 'what can you do', 'o que pode fazer', 'que peux tu faire', 'cosa puoi fare', 'was kannst du', 'interfaz', 'opciones', 'funciones')) {
-      reply(this.language.t('voiceWakeHelp'));
-      return;
-    }
-    if (includes('inicio', 'lector', 'leer texto', 'reader', 'home', 'leitor', 'lecteur', 'lettore', 'leser', 'qhaway', 'ulliri', 'camara', 'foto', 'imagen', 'texto', 'documento', 'escanear', 'describir')) {
-      void this.router.navigateByUrl('/');
-      reply(this.language.t('voiceOpenReader'));
-      return;
-    }
-    if (includes('dni', 'ingresar', 'acceder', 'acceso', 'identificar', 'identidad', 'sign in', 'login', 'entrar')) {
-      void this.router.navigateByUrl('/acceder');
-      reply(this.assistantStatus('access'));
-      return;
-    }
-    if (!this.isConversationalRequest(request)) {
-      reply(this.assistantStatus('unknown'));
-      return;
-    }
-    // General questions are handled only by the server-side function, so the
-    // Gemini credential is never sent to the browser.
+    // Gemini interprets every request after the wake phrase. Its result is
+    // treated as data only: the application accepts a fixed route allow-list.
     const requestId = ++this.assistantRequestId;
-    // Delaying the prompt avoids cancelling it immediately when the answer is
-    // already available from the edge function.
     const thinkingTimer = setTimeout(() => {
       if (requestId === this.assistantRequestId) {
         this.speech.assistant(this.assistantStatus('thinking'));
       }
     }, 550);
     try {
-      const { answer } = await this.backend.askAssistant(
+      const { answer, intent } = await this.backend.askAssistant(
         request,
         this.language.language(),
       );
       clearTimeout(thinkingTimer);
-      if (requestId === this.assistantRequestId && answer) reply(answer);
+      if (requestId !== this.assistantRequestId) return;
+      this.openAssistantIntent(intent);
+      reply(answer || this.assistantStatus('unknown'));
     } catch {
       clearTimeout(thinkingTimer);
       if (requestId === this.assistantRequestId)
         reply(this.assistantStatus('unavailable'));
     }
   }
-  private isConversationalRequest(request: string) {
-    return /\b(que|como|cuando|donde|puedes|cuenta|dime|chiste|ayuda|explica|recomienda|what|how|when|where|can|tell|joke|help|quando|onde|piada|ajuda|quoi|comment|blague|aide|cosa|barzelletta|aiuto|was|wie|witz|hilfe|yanapa)\b/.test(request);
+  private openAssistantIntent(intent?: string) {
+    switch (intent) {
+      case 'reader':
+        void this.router.navigateByUrl('/');
+        break;
+      case 'map':
+        void this.router.navigateByUrl('/mapa');
+        break;
+      case 'readings':
+        void this.router.navigateByUrl('/recientes');
+        break;
+      case 'settings':
+        queueMicrotask(() => this.settingsDialog?.open());
+        break;
+      case 'access':
+        void this.router.navigateByUrl('/acceder');
+        break;
+    }
   }
   private assistantStatus(kind: 'ready' | 'thinking' | 'unavailable' | 'unknown' | 'access') {
     const copy: Record<string, Record<typeof kind, string>> = {
