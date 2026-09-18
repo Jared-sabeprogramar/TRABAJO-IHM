@@ -398,9 +398,18 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     this.cameraError = '';
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('La cámara necesita HTTPS o localhost. Puedes adjuntar una foto del lugar.');
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false,
-      });
+      let stream: MediaStream;
+      try {
+        // Prefer the rear camera for documenting a barrier. Some phones expose
+        // only one camera to the browser, so retry without that preference.
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false,
+        });
+      } catch (error) {
+        const name = (error as DOMException).name;
+        if (name !== 'NotFoundError' && name !== 'OverconstrainedError') throw error;
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
       if (this.destroyed || request !== this.cameraRequest || !this.dialog.nativeElement.open) {
         stream.getTracks().forEach(t => t.stop());
         return;
@@ -416,9 +425,14 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     } catch (error) {
       if (this.destroyed || request !== this.cameraRequest) return;
       this.stopCamera();
-      this.cameraError = (error as Error).name === 'NotAllowedError'
-        ? 'No se permitió la cámara. Puedes adjuntar una foto o continuar sin ella.'
-        : (error as Error).message;
+      const name = (error as DOMException).name;
+      this.cameraError = name === 'NotAllowedError'
+        ? 'No se permitió la cámara. Activa el permiso de cámara del navegador o adjunta una foto.'
+        : name === 'NotFoundError'
+          ? 'No se encontró una cámara disponible. Cierra otra app que esté usando la cámara, revisa el permiso o adjunta una foto.'
+          : name === 'NotReadableError'
+            ? 'La cámara está siendo usada por otra aplicación. Ciérrala e inténtalo nuevamente, o adjunta una foto.'
+            : 'No se pudo iniciar la cámara. Puedes adjuntar una foto o continuar sin ella.';
     } finally {
       if (request === this.cameraRequest) this.cameraOpening = false;
     }
