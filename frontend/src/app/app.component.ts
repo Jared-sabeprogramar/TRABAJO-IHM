@@ -61,7 +61,7 @@ export class AppComponent {
     }
     if (!request) {
       this.awaitingVoiceRequestUntil = Date.now() + 10000;
-      this.speech.read(this.assistantStatus('ready'));
+      this.speech.assistant(this.assistantStatus('ready'));
       return;
     }
     this.awaitingVoiceRequestUntil = 0;
@@ -70,17 +70,17 @@ export class AppComponent {
       phrases.some((phrase) => heardRequest.includes(phrase));
     if (includes('mapa', 'map', 'carte', 'mappa', 'karte')) {
       void this.router.navigateByUrl('/mapa');
-      this.speech.read(this.language.t('voiceOpenMap'));
+      this.speech.assistant(this.language.t('voiceOpenMap'));
       return;
     }
     if (includes('lecturas', 'lectura', 'historial', 'readings', 'history', 'leituras', 'historico', 'lectures', 'letture', 'lesungen', 'nawinchaykuna', 'ullirinaka')) {
       void this.router.navigateByUrl('/recientes');
-      this.speech.read(this.language.t('voiceOpenReadings'));
+      this.speech.assistant(this.language.t('voiceOpenReadings'));
       return;
     }
     if (includes('configuracion', 'ajustes', 'settings', 'configuracoes', 'parametres', 'impostazioni', 'einstellungen', 'churaykuna', 'wakichtawi')) {
       queueMicrotask(() => this.settingsDialog?.open());
-      this.speech.read(this.language.t('voiceOpenSettings'));
+      this.speech.assistant(this.language.t('voiceOpenSettings'));
       return;
     }
     if (includes('silenciar', 'apagar voz', 'mute', 'quiet', 'stumm', 'chinkachiy', 'amuktayana')) {
@@ -89,16 +89,16 @@ export class AppComponent {
     }
     if (includes('activar voz', 'activar sonido', 'unmute', 'sound on', 'ativar voz', 'activer le son', 'attiva voce', 'stimme an', 'rimayta kichay', 'aru jistayana')) {
       this.speech.sound.set(true);
-      this.speech.read(this.language.t('voiceSoundOn'));
+      this.speech.assistant(this.language.t('voiceSoundOn'));
       return;
     }
     if (includes('ayuda', 'comandos', 'help', 'ajuda', 'aide', 'aiuto', 'hilfe', 'yanapa', 'que puedes hacer', 'que haces', 'what can you do', 'o que pode fazer', 'que peux tu faire', 'cosa puoi fare', 'was kannst du', 'interfaz', 'opciones', 'funciones')) {
-      this.speech.read(this.language.t('voiceWakeHelp'));
+      this.speech.assistant(this.language.t('voiceWakeHelp'));
       return;
     }
     if (includes('inicio', 'lector', 'leer texto', 'reader', 'home', 'leitor', 'lecteur', 'lettore', 'leser', 'qhaway', 'ulliri')) {
       void this.router.navigateByUrl('/');
-      this.speech.read(this.language.t('voiceOpenReader'));
+      this.speech.assistant(this.language.t('voiceOpenReader'));
       return;
     }
     // General questions are handled only by the server-side function, so the
@@ -108,7 +108,7 @@ export class AppComponent {
     // already available from the edge function.
     const thinkingTimer = setTimeout(() => {
       if (requestId === this.assistantRequestId) {
-        this.speech.read(this.assistantStatus('thinking'));
+        this.speech.assistant(this.assistantStatus('thinking'));
       }
     }, 550);
     try {
@@ -117,16 +117,16 @@ export class AppComponent {
         this.language.language(),
       );
       clearTimeout(thinkingTimer);
-      if (requestId === this.assistantRequestId && answer) this.speech.read(answer);
+      if (requestId === this.assistantRequestId && answer) this.speech.assistant(answer);
     } catch {
       clearTimeout(thinkingTimer);
       if (requestId === this.assistantRequestId)
-        this.speech.read(this.assistantStatus('unavailable'));
+        this.speech.assistant(this.assistantStatus('unavailable'));
     }
   }
   private assistantStatus(kind: 'ready' | 'thinking' | 'unavailable') {
     const copy: Record<string, Record<typeof kind, string>> = {
-      'es-PE': { ready: 'Te escucho.', thinking: 'Un momento.', unavailable: 'No pude responder ahora. Puedes pedirme abrir el lector, el mapa, tus lecturas o configuración.' },
+      'es-PE': { ready: 'Te escucho. ¿Qué necesitas?', thinking: 'Dame un segundo.', unavailable: 'No pude responder ahora. Puedes pedirme abrir el lector, el mapa, tus lecturas o configuración.' },
       'en-US': { ready: 'I am listening.', thinking: 'One moment.', unavailable: 'I cannot answer right now. You can ask me to open the reader, map, readings, or settings.' },
       'pt-BR': { ready: 'Estou ouvindo.', thinking: 'Um momento.', unavailable: 'Não consigo responder agora. Você pode pedir para abrir o leitor, mapa, leituras ou configurações.' },
       'fr-FR': { ready: 'Je vous écoute.', thinking: 'Un instant.', unavailable: 'Je ne peux pas répondre maintenant. Vous pouvez demander d’ouvrir le lecteur, la carte, les lectures ou les paramètres.' },

@@ -121,16 +121,34 @@ export class SpeechService {
       return score(b) - score(a);
     })[0];
   }
-  private configureVoice(utterance: SpeechSynthesisUtterance) {
+  private configureVoice(
+    utterance: SpeechSynthesisUtterance,
+    personality: 'neutral' | 'assistant' = 'neutral',
+  ) {
     const settings = this.settings();
     utterance.lang = settings.lang;
-    utterance.rate = settings.rate;
-    utterance.pitch = 1;
+    // Keep OCR neutral and precise. Assistant replies use a subtle lift in
+    // cadence so they feel conversational without compromising clarity.
+    utterance.rate = personality === 'assistant'
+      ? Math.max(0.82, Math.min(1.2, settings.rate * 1.04))
+      : settings.rate;
+    utterance.pitch = personality === 'assistant' ? 1.04 : 1;
     utterance.volume = settings.volume;
     const voice = this.preferredVoice(settings.lang);
     if (voice) utterance.voice = voice;
   }
   read(text: string, onEnd?: () => void) {
+    this.speak(text, onEnd, 'neutral');
+  }
+  /** A warmer cadence reserved for the conversational assistant. */
+  assistant(text: string, onEnd?: () => void) {
+    this.speak(text, onEnd, 'assistant');
+  }
+  private speak(
+    text: string,
+    onEnd: (() => void) | undefined,
+    personality: 'neutral' | 'assistant',
+  ) {
     this.stop();
     if (!this.sound() || !this.supported) {
       onEnd?.();
@@ -140,7 +158,7 @@ export class SpeechService {
     if (resumeListener) this.stopVoiceListener();
     const u = new SpeechSynthesisUtterance(text);
     this.utterance = u;
-    this.configureVoice(u);
+    this.configureVoice(u, personality);
     u.onend = () => {
       if (this.utterance === u) {
         this.state.set('idle');
