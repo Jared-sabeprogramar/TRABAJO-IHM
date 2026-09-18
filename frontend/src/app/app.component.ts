@@ -185,9 +185,13 @@ export class AppComponent {
   }
   private announceWordAt(x: number, y: number) {
     const documentWithCaret = document as Document & {
+      caretPositionFromPoint?: (x: number, y: number) => {
+        offsetNode: Node;
+        offset: number;
+      } | null;
       caretRangeFromPoint?: (x: number, y: number) => Range | null;
     };
-    const position = document.caretPositionFromPoint?.(x, y);
+    const position = documentWithCaret.caretPositionFromPoint?.(x, y);
     const range = position ? undefined : documentWithCaret.caretRangeFromPoint?.(x, y);
     const node = position?.offsetNode ?? range?.startContainer;
     const offset = position?.offset ?? range?.startOffset;
