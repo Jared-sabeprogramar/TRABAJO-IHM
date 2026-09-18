@@ -40,9 +40,11 @@ export interface VoiceCommand {
 export class SpeechService {
   sound = signal(true);
   state = signal<'idle' | 'reading' | 'paused'>('idle');
-  /** The microphone is only used after the person explicitly enables this option. */
+  /** The microphone is used only after the person grants the browser permission. */
   voiceSensitive = signal(false);
   listening = signal(false);
+  /** True only after the wake phrase, while Acces is waiting for a request. */
+  assistantAwake = signal(false);
   voiceCommand = signal<VoiceCommand | null>(null);
   settings = signal<VoiceSettings>({
     rate: 1,
@@ -79,6 +81,15 @@ export class SpeechService {
       speechSynthesis.addEventListener('voiceschanged', () => this.refreshVoices());
     }
     this.applyText();
+    // A permission previously granted by the person should not require opening
+    // Settings again after every reload or route change.
+    if (this.voiceSensitive()) {
+      queueMicrotask(() => this.startVoiceListener());
+      document.addEventListener('pointerdown', () => this.startVoiceListener(), {
+        once: true,
+        passive: true,
+      });
+    }
   }
   save(s: VoiceSettings) {
     this.settings.set({ ...s });
@@ -91,7 +102,27 @@ export class SpeechService {
     // save() is called from the settings button, which is a user gesture that
     // browsers accept for requesting microphone permission.
     if (s.voiceSensitive) this.startVoiceListener();
-    else this.stopVoiceListener();
+    else {
+      this.endAssistantTurn();
+      this.stopVoiceListener();
+    }
+  }
+  /** Enables the wake-word listener from the visible app control, once. */
+  enableVoiceAssistant() {
+    if (!this.voiceDetectionSupported) return;
+    this.voiceSensitive.set(true);
+    this.settings.update((value) => ({ ...value, voiceSensitive: true }));
+    try { localStorage.setItem('acces-settings', JSON.stringify(this.settings())); } catch {}
+    this.startVoiceListener();
+  }
+  beginAssistantTurn() {
+    this.assistantAwake.set(true);
+    // Android-capable browsers vibrate. iPhone browsers do not expose web
+    // vibration, so the visible lime outline remains the equivalent cue.
+    if ('vibrate' in navigator) navigator.vibrate([28, 45, 48]);
+  }
+  endAssistantTurn() {
+    this.assistantAwake.set(false);
   }
   private applyText() {
     document.documentElement.classList.toggle(

@@ -1761,6 +1761,33 @@ body {
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 10px 22px rgba(38, 68, 121, 0.11);
 }
+.assistant-button.enabled {
+  color: #397900;
+  border-color: rgba(117, 184, 35, 0.72);
+  box-shadow: 0 0 0 2px rgba(177, 255, 67, 0.28), 0 6px 18px rgba(94, 154, 18, 0.14);
+}
+/* Wake-word feedback is intentionally more than colour: it has a clear
+   outline, a live status announcement, and a haptic cue where supported. */
+.assistant-awake::before {
+  content: '';
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  inset: 3px;
+  border: 4px solid #a3e635;
+  border-radius: 14px;
+  box-shadow: inset 0 0 18px rgba(190, 255, 85, 0.52), 0 0 22px rgba(163, 230, 53, 0.92);
+  animation: assistant-ready-pulse 900ms ease-in-out infinite alternate;
+}
+.assistant-awake .topbar,
+.assistant-awake .mobile-nav {
+  border-color: #a3e635;
+  box-shadow: 0 0 0 2px rgba(190, 255, 85, 0.5), 0 0 22px rgba(163, 230, 53, 0.45);
+}
+@keyframes assistant-ready-pulse {
+  from { opacity: 0.68; }
+  to { opacity: 1; }
+}
 .camera-stage {
   background: rgba(246, 250, 255, 0.56);
   border-color: rgba(151, 184, 232, 0.75);
