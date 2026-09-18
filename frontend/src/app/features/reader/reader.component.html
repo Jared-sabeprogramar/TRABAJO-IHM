@@ -95,7 +95,16 @@
           >
         }
         @if (result()) {
-          <div class="recognized-text" tabindex="0">{{ result() }}</div>
+          <div class="recognized-text" tabindex="0">
+            @if (mode === "text" && ocrLayout()) {
+              @if (ocrLayout()!.title) { <h3>{{ ocrLayout()!.title }}</h3> }
+              @for (paragraph of ocrLayout()!.paragraphs; track $index) { <p>{{ paragraph }}</p> }
+              @if (ocrLayout()!.prices.length) {
+                <div class="ocr-prices"><strong>Precios detectados</strong>@for (price of ocrLayout()!.prices; track price) { <span>{{ price }}</span> }</div>
+              }
+              <small>Idioma detectado: {{ ocrLayout()!.language }}</small>
+            } @else { {{ result() }} }
+          </div>
         }
         @if (busy()) {
           <div class="processing-overlay" role="status">
@@ -209,6 +218,16 @@
             class="switch"
             [(ngModel)]="continuous"
             (change)="toggleContinuous()"
+            [disabled]="busy()"
+        /></label>
+        <label class="continuous-row focus-area-row"
+          ><span
+            ><app-icon name="scan" /> Leer solo dentro del recuadro
+            <small>Reduce el texto de fondo y permite explorar el documento por zonas</small></span
+          ><input
+            type="checkbox"
+            class="switch"
+            [(ngModel)]="focusArea"
             [disabled]="busy()"
         /></label>
       }

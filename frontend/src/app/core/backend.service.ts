@@ -9,6 +9,15 @@ export interface Place {
   report_count: number;
   last_report_at: string | null;
   categories?: string[];
+  present_votes?: number;
+  resolved_votes?: number;
+  last_verification_at?: string | null;
+}
+export interface CommunityImpact {
+  reported_places: number;
+  active_reports: number;
+  verified_places: number;
+  resolved_confirmations: number;
 }
 export interface ReportInput {
   photo?: string;
@@ -114,6 +123,18 @@ export class BackendService {
     return this.invoke<{ translations: { source: string; text: string }[] }>(
       'translate-ui', { language, phrases },
     );
+  }
+  async communityImpact() {
+    const c = await this.session();
+    const { data, error } = await c
+      .from('community_impact_summary')
+      .select('*')
+      .single();
+    if (error) throw new Error('No se pudo cargar el impacto comunitario.');
+    return data as CommunityImpact;
+  }
+  feedback(placeId: string, state: 'present' | 'resolved') {
+    return this.invoke<{ saved: boolean }>('community-feedback', { placeId, state });
   }
   askAssistant(question: string, language: string) {
     return this.invoke<{ answer: string }>('voice-assistant', { question, language });

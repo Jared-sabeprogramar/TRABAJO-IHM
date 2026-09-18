@@ -15,6 +15,14 @@ import { BackendService } from '../../core/backend.service';
 import { HistoryService } from '../../core/history.service';
 import type { Worker } from 'tesseract.js';
 import { RevealDirective } from '../../shared/reveal.directive';
+interface OcrLayout {
+  language: string;
+  title: string;
+  paragraphs: string[];
+  prices: string[];
+  display: string;
+  narration: string;
+}
 @Component({
   selector: 'app-reader',
   standalone: true,
@@ -35,7 +43,9 @@ export class ReaderComponent implements OnDestroy {
   error = signal('');
   progress = signal(0);
   continuous = false;
+  focusArea = true;
   preview = signal('');
+  ocrLayout = signal<OcrLayout | null>(null);
   private stream?: MediaStream;
   private worker?: Worker;
   private timer?: ReturnType<typeof setTimeout>;
@@ -70,6 +80,7 @@ export class ReaderComponent implements OnDestroy {
       this.active.set(true);
       this.preview.set('');
       this.result.set('');
+      this.ocrLayout.set(null);
       if (this.mode === 'text') {
         // Hands-free OCR starts from the live camera. No photo is required.
         this.continuous = true;
@@ -106,6 +117,7 @@ export class ReaderComponent implements OnDestroy {
   switchMode(mode: 'text' | 'image') {
     this.mode = mode;
     this.result.set('');
+    this.ocrLayout.set(null);
     this.error.set('');
     this.continuous = false;
     this.noTextAnnounced = false;
@@ -118,10 +130,22 @@ export class ReaderComponent implements OnDestroy {
     if (!v.videoWidth)
       throw new Error('La cámara aún está iniciando. Intenta nuevamente.');
     const c = document.createElement('canvas');
-    const scale = Math.min(1, 1600 / v.videoWidth);
-    c.width = v.videoWidth * scale;
-    c.height = v.videoHeight * scale;
-    c.getContext('2d')!.drawImage(v, 0, 0, c.width, c.height);
+    let sourceX = 0;
+    let sourceY = 0;
+    let sourceWidth = v.videoWidth;
+    let sourceHeight = v.videoHeight;
+    // The on-screen frame is the reading zone. Cropping it reduces background
+    // noise and lets a person intentionally scan one section at a time.
+    if (this.mode === 'text' && this.focusArea) {
+      sourceWidth = Math.round(v.videoWidth * 0.78);
+      sourceHeight = Math.round(v.videoHeight * 0.58);
+      sourceX = Math.round((v.videoWidth - sourceWidth) / 2);
+      sourceY = Math.round((v.videoHeight - sourceHeight) / 2);
+    }
+    const scale = Math.min(1, 1600 / sourceWidth);
+    c.width = Math.round(sourceWidth * scale);
+    c.height = Math.round(sourceHeight * scale);
+    c.getContext('2d')!.drawImage(v, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, c.width, c.height);
     return c.toDataURL('image/jpeg', 0.85);
   }
   async upload(event: Event) {
@@ -148,6 +172,7 @@ export class ReaderComponent implements OnDestroy {
       this.stopCamera();
       this.preview.set(c.toDataURL('image/jpeg', 0.85));
       this.result.set('');
+      this.ocrLayout.set(null);
       this.announce('Imagen lista para analizar. Pulsa describir imagen o leer texto en voz alta.');
     } catch {
       this.setError('No se pudo abrir esa imagen. Prueba con otro archivo.');
@@ -202,11 +227,15 @@ export class ReaderComponent implements OnDestroy {
         text = (await this.backend.describe(image, this.speech.settings().lang)).description;
       }
       if (this.destroyed) return;
-      const same = text === this.result();
-      this.result.set(text);
+      const layout = this.mode === 'text' ? this.organizeOcr(text) : null;
+      const display = layout?.display ?? text;
+      const same = display === this.result();
+      this.result.set(display);
+      this.ocrLayout.set(layout);
       if (!same) {
-        this.history.add(text, this.mode);
-        this.speech.read(text, () => this.schedule());
+        this.history.add(display, this.mode);
+        if (layout) this.speech.readDocument(layout.narration, () => this.schedule(), layout.language);
+        else this.speech.read(text, () => this.schedule());
       } else {
         this.schedule();
       }
@@ -245,6 +274,7 @@ export class ReaderComponent implements OnDestroy {
   newReading() {
     this.stopReading();
     this.result.set('');
+    this.ocrLayout.set(null);
     this.error.set('');
   }
   ngOnDestroy() {
@@ -252,5 +282,43 @@ export class ReaderComponent implements OnDestroy {
     this.stopCamera();
     this.speech.stop();
     void this.worker?.terminate();
+  }
+  private organizeOcr(raw: string): OcrLayout {
+    const lines = raw.split(/\r?\n/).map(line => line.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    const pricePattern = /(?:s\/?\s*|\$|€|£)\s*\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?|\d+(?:[.,]\d{2})\s*(?:soles|usd|euros?)/i;
+    const prices = lines.filter(line => pricePattern.test(line));
+    const title = lines[0]?.length <= 95 && !pricePattern.test(lines[0]) ? lines[0] : '';
+    const contentLines = lines.filter((line, index) => index !== 0 || !title).filter(line => !prices.includes(line));
+    const paragraphs = raw.split(/\n\s*\n/)
+      .map(paragraph => paragraph.replace(/\s+/g, ' ').trim())
+      .filter(paragraph => paragraph && paragraph !== title && !prices.includes(paragraph));
+    const body = paragraphs.length ? paragraphs : contentLines.join(' ').match(/.{1,420}(?:\s|$)/g)?.map(item => item.trim()).filter(Boolean) ?? [];
+    const language = this.detectLanguage(`${title} ${body.join(' ')}`);
+    const display = [
+      title ? `Título\n${title}` : '',
+      body.length ? `Texto\n${body.join('\n\n')}` : '',
+      prices.length ? `Precios detectados\n${prices.join('\n')}` : '',
+    ].filter(Boolean).join('\n\n');
+    const narration = [
+      title ? `Título: ${title}.` : '',
+      body.join(' '),
+      prices.length ? `Precios detectados: ${prices.join('. ')}.` : '',
+    ].filter(Boolean).join(' ');
+    return { language, title, paragraphs: body, prices, display: display || raw, narration: narration || raw };
+  }
+  private detectLanguage(text: string) {
+    const samples: Record<string, string[]> = {
+      'es-PE': [' el ', ' la ', ' de ', ' para ', ' con ', ' una '],
+      'en-US': [' the ', ' and ', ' for ', ' with ', ' this ', ' price '],
+      'pt-BR': [' de ', ' para ', ' com ', ' não ', ' você ', ' uma '],
+      'fr-FR': [' le ', ' la ', ' de ', ' avec ', ' pour ', ' une '],
+      'it-IT': [' il ', ' la ', ' di ', ' con ', ' per ', ' una '],
+      'de-DE': [' der ', ' die ', ' das ', ' und ', ' mit ', ' für '],
+    };
+    const value = ` ${text.toLocaleLowerCase()} `;
+    const ranked = Object.entries(samples).map(([language, terms]) => ({
+      language, score: terms.filter(term => value.includes(term)).length,
+    })).sort((a, b) => b.score - a.score);
+    return ranked[0]?.score ? ranked[0].language : this.speech.settings().lang;
   }
 }

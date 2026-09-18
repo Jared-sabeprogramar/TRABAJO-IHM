@@ -56,6 +56,33 @@
         <option value="warning">1–2 reportes</option>
         <option value="high">3 o más reportes</option>
       </select>
+      <label for="category-filter">Tipo de barrera</label
+      ><select id="category-filter" [(ngModel)]="categoryFilter" (ngModelChange)="renderMarkers()">
+        <option value="all">Todos los tipos</option>
+        <option value="no_ramp">Falta de rampa</option>
+        <option value="blocked_sidewalk">Vereda obstruida</option>
+        <option value="stairs">Escaleras sin alternativa</option>
+        <option value="narrow_access">Acceso muy estrecho</option>
+        <option value="damaged_surface">Superficie en mal estado</option>
+        <option value="other">Otra barrera</option>
+      </select>
+      <section class="nearby-alerts" aria-labelledby="nearby-title">
+        <div>
+          <h3 id="nearby-title">Alertas cercanas</h3>
+          <p>Consulta barreras reportadas a menos de 500 metros.</p>
+        </div>
+        <button type="button" class="button" (click)="findNearby()" [disabled]="nearbyLoading">
+          <app-icon name="locate" />{{ nearbyLoading ? "Buscando…" : "Buscar cerca de mí" }}
+        </button>
+        @if (nearbyError) { <p class="field-help" role="alert">{{ nearbyError }}</p> }
+        @if (nearby.length) {
+          <ul class="nearby-list" aria-live="polite">
+            @for (place of nearby; track place.id) {
+              <li><strong>{{ place.name }}</strong> · {{ place.distance.toFixed(0) }} m</li>
+            }
+          </ul>
+        }
+      </section>
       @if (loading) {
         <p class="notice" role="status">Cargando reportes…</p>
       } @else if (error) {
@@ -101,6 +128,12 @@
               >Último reporte:
               {{ place.last_report_at | date: "dd/MM/yyyy" }}</small
             >
+            @if (place.last_verification_at) {
+              <small>Verificado por la comunidad: {{ place.last_verification_at | date: "dd/MM/yyyy" }}</small>
+            }
+            @if ((place.present_votes || place.resolved_votes)) {
+              <p class="community-votes">Sigue presente: {{ place.present_votes || 0 }} · Resuelto: {{ place.resolved_votes || 0 }}</p>
+            }
             <div class="place-actions">
               <button class="text-button" (click)="openReport(place)">
                 Reportar aquí <app-icon name="plus" /></button
@@ -115,6 +148,10 @@
                 rel="noopener"
                 >Ver en Google Maps ↗</a
               >
+            </div>
+            <div class="feedback-actions" aria-label="Confirmar estado de la barrera">
+              <button type="button" class="text-button" (click)="confirmPlace(place, 'present')" [disabled]="!!feedbackPlaceId">Sigue presente</button>
+              <button type="button" class="text-button" (click)="confirmPlace(place, 'resolved')" [disabled]="!!feedbackPlaceId">Ya fue resuelto</button>
             </div>
           </article>
         }
@@ -160,6 +197,20 @@
       </div>
     </section>
   </div>
+  <section class="card impact-panel" aria-labelledby="impact-title">
+    <div>
+      <span class="eyebrow">IMPACTO COMUNITARIO</span>
+      <h2 id="impact-title">Información que impulsa mejoras.</h2>
+      <p>Los datos se agregan; no muestran DNI, fotos ni identidad de quienes reportan.</p>
+    </div>
+    <div class="impact-metrics" aria-live="polite">
+      <div><strong>{{ impact?.reported_places ?? places.length }}</strong><span>Lugares reportados</span></div>
+      <div><strong>{{ impact?.active_reports ?? total }}</strong><span>Reportes activos</span></div>
+      <div><strong>{{ impact?.verified_places ?? 0 }}</strong><span>Lugares verificados</span></div>
+      <div><strong>{{ impact?.resolved_confirmations ?? 0 }}</strong><span>Mejoras confirmadas</span></div>
+    </div>
+    @if (hotspots) { <p class="impact-hotspots"><strong>Zonas con más reportes:</strong> {{ hotspots }}</p> }
+  </section>
   <div class="notice map-disclaimer">
     <app-icon name="info" /><span
       ><strong>Reportes de la comunidad, no una certificación.</strong> Se

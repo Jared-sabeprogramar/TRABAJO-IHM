@@ -165,15 +165,19 @@ export class AppComponent {
   @HostListener('document:touchstart', ['$event'])
   onTouchStart(event: TouchEvent) {
     const touch = event.touches[0];
-    if (touch) this.vibrateAt(touch.clientX, touch.clientY);
+    if (touch) this.exploreAt(touch.clientX, touch.clientY);
   }
   @HostListener('document:touchmove', ['$event'])
   onTouchMove(event: TouchEvent) {
     const touch = event.touches[0];
-    if (touch) this.vibrateAt(touch.clientX, touch.clientY);
+    if (touch) this.exploreAt(touch.clientX, touch.clientY);
   }
-  private vibrateAt(x: number, y: number) {
-    this.vibrateControl(document.elementFromPoint(x, y));
+  private exploreAt(x: number, y: number) {
+    const target = document.elementFromPoint(x, y);
+    // On Android this gives a short haptic pulse. On iPhone, Safari does not
+    // expose web vibration, so the same gesture still announces the control.
+    this.announceControl(target);
+    this.vibrateControl(target);
   }
   private vibrateControl(target: EventTarget | null) {
     if (!(target instanceof Element) || !('vibrate' in navigator)) return;

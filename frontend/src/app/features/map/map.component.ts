@@ -12,7 +12,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { IconComponent } from '../../shared/icon.component';
-import { BackendService, Place } from '../../core/backend.service';
+import { BackendService, CommunityImpact, Place } from '../../core/backend.service';
 import { MapsService } from '../../core/maps.service';
 import { reportStatus } from '../../core/report-status';
 import { startDictation } from '../../core/dictation';
@@ -63,6 +63,12 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   success = '';
   search = '';
   filter = 'all';
+  categoryFilter = 'all';
+  impact?: CommunityImpact;
+  feedbackPlaceId = '';
+  nearby: Array<Place & { distance: number }> = [];
+  nearbyLoading = false;
+  nearbyError = '';
   status = reportStatus;
   map?: google.maps.Map;
   markers: google.maps.marker.AdvancedMarkerElement[] = [];
@@ -87,11 +93,16 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       (p) =>
         p.name.toLowerCase().includes(this.search.toLowerCase()) &&
         (this.filter === 'all' ||
-          this.status(p.report_count).level === this.filter),
+          this.status(p.report_count).level === this.filter) &&
+        (this.categoryFilter === 'all' ||
+          (p.categories ?? []).includes(this.categoryFilter)),
     );
   }
   get total() {
     return this.places.reduce((n, p) => n + Number(p.report_count), 0);
+  }
+  get hotspots() {
+    return this.places.slice(0, 3).map(place => place.name).join(' · ');
   }
   async ngAfterViewInit() {
     void this.refresh();
@@ -144,6 +155,13 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       if (this.destroyed) return;
       this.places = places;
       this.renderMarkers();
+      try {
+        this.impact = await this.backend.communityImpact();
+      } catch {
+        // The map stays useful while a project is being upgraded with the
+        // optional impact migration.
+        this.impact = undefined;
+      }
     } catch (e) {
       this.error = (e as Error).message;
     } finally {
@@ -172,6 +190,57 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       m.addListener('click', () => this.zone.run(() => this.openReport(p)));
       return m;
     });
+  }
+  async confirmPlace(place: Place, state: 'present' | 'resolved') {
+    if (this.feedbackPlaceId) return;
+    this.feedbackPlaceId = place.id;
+    this.error = '';
+    try {
+      await this.backend.feedback(place.id, state);
+      this.success = state === 'present'
+        ? 'Confirmaste que la barrera sigue presente. Gracias por mantener el mapa actualizado.'
+        : 'Registraste una mejora resuelta. Gracias por compartir la actualización.';
+      await this.refresh();
+      this.speech.read(this.success);
+    } catch (e) {
+      this.error = (e as Error).message;
+      this.speech.read(this.error);
+    } finally {
+      this.feedbackPlaceId = '';
+    }
+  }
+  findNearby() {
+    this.nearbyError = '';
+    if (!navigator.geolocation) {
+      this.nearbyError = 'Tu navegador no permite buscar barreras cercanas.';
+      return;
+    }
+    this.nearbyLoading = true;
+    navigator.geolocation.getCurrentPosition(
+      (position) => this.zone.run(() => {
+        const { latitude, longitude } = position.coords;
+        this.nearby = this.places
+          .map(place => ({ ...place, distance: this.distanceMeters(latitude, longitude, place.latitude, place.longitude) }))
+          .filter(place => place.distance <= 500)
+          .sort((a, b) => a.distance - b.distance);
+        this.nearbyLoading = false;
+        const message = this.nearby.length
+          ? `${this.nearby.length} barreras reportadas a menos de 500 metros. La más cercana está a ${Math.round(this.nearby[0].distance)} metros.`
+          : 'No hay barreras reportadas a menos de 500 metros.';
+        this.speech.read(message);
+      }),
+      () => this.zone.run(() => {
+        this.nearbyLoading = false;
+        this.nearbyError = 'No pudimos obtener tu ubicación para buscar alertas cercanas.';
+      }),
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 },
+    );
+  }
+  private distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
+    const rad = (value: number) => value * Math.PI / 180;
+    const a = Math.sin(rad(lat2 - lat1) / 2) ** 2 +
+      Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lng2 - lng1) / 2) ** 2;
+    return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
   markSelection() {
     if (

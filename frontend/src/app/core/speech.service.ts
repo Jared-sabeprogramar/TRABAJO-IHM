@@ -124,9 +124,11 @@ export class SpeechService {
   private configureVoice(
     utterance: SpeechSynthesisUtterance,
     personality: 'neutral' | 'assistant' = 'neutral',
+    language?: string,
   ) {
     const settings = this.settings();
-    utterance.lang = settings.lang;
+    const selectedLanguage = language || settings.lang;
+    utterance.lang = selectedLanguage;
     // Keep OCR neutral and precise. Assistant replies use a subtle lift in
     // cadence so they feel conversational without compromising clarity.
     utterance.rate = personality === 'assistant'
@@ -134,7 +136,7 @@ export class SpeechService {
       : settings.rate;
     utterance.pitch = personality === 'assistant' ? 1.04 : 1;
     utterance.volume = settings.volume;
-    const voice = this.preferredVoice(settings.lang);
+    const voice = this.preferredVoice(selectedLanguage);
     if (voice) utterance.voice = voice;
   }
   read(text: string, onEnd?: () => void) {
@@ -144,10 +146,54 @@ export class SpeechService {
   assistant(text: string, onEnd?: () => void) {
     this.speak(text, onEnd, 'assistant');
   }
+  /** Splits long OCR documents so mobile speech engines do not truncate them. */
+  readDocument(text: string, onEnd?: () => void, language?: string) {
+    const chunks = text.match(/[^.!?…]+[.!?…]+|[^.!?…]+$/g)
+      ?.reduce<string[]>((all, sentence) => {
+        const last = all[all.length - 1];
+        if (last && (last.length + sentence.length) <= 420) all[all.length - 1] = `${last}${sentence}`;
+        else all.push(sentence.trim());
+        return all;
+      }, [])
+      .filter(Boolean) ?? [];
+    if (chunks.length <= 1) {
+      this.speak(text, onEnd, 'neutral', language);
+      return;
+    }
+    this.stop();
+    if (!this.sound() || !this.supported) {
+      onEnd?.();
+      return;
+    }
+    const resumeListener = this.voiceSensitive();
+    if (resumeListener) this.stopVoiceListener();
+    let index = 0;
+    const finish = () => {
+      this.state.set('idle');
+      onEnd?.();
+      if (resumeListener) this.resumeVoiceListener();
+    };
+    const next = () => {
+      if (index >= chunks.length) return finish();
+      const utterance = new SpeechSynthesisUtterance(chunks[index++]);
+      this.utterance = utterance;
+      this.configureVoice(utterance, 'neutral', language);
+      utterance.onend = () => {
+        if (this.utterance === utterance) next();
+      };
+      utterance.onerror = () => {
+        if (this.utterance === utterance) finish();
+      };
+      this.state.set('reading');
+      speechSynthesis.speak(utterance);
+    };
+    next();
+  }
   private speak(
     text: string,
     onEnd: (() => void) | undefined,
     personality: 'neutral' | 'assistant',
+    language?: string,
   ) {
     this.stop();
     if (!this.sound() || !this.supported) {
@@ -158,7 +204,7 @@ export class SpeechService {
     if (resumeListener) this.stopVoiceListener();
     const u = new SpeechSynthesisUtterance(text);
     this.utterance = u;
-    this.configureVoice(u, personality);
+    this.configureVoice(u, personality, language);
     u.onend = () => {
       if (this.utterance === u) {
         this.state.set('idle');

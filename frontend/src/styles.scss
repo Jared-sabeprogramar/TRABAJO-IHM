@@ -1132,6 +1132,43 @@ fieldset {
 .place-list {
   margin-top: 20px;
 }
+.nearby-alerts {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid #c9dafd;
+  border-radius: 12px;
+  background: rgba(232, 240, 255, 0.55);
+}
+.nearby-alerts h3,
+.nearby-alerts p { margin: 0; }
+.nearby-alerts h3 { font-size: 0.86rem; }
+.nearby-alerts p { font-size: 0.72rem; margin-top: 4px; }
+.nearby-alerts .button { width: 100%; margin-top: 10px; font-size: 0.72rem; }
+.nearby-list { margin: 10px 0 0; padding-left: 17px; font-size: 0.72rem; }
+.nearby-list li + li { margin-top: 4px; }
+.community-votes { color: var(--muted); }
+.feedback-actions { display: flex; flex-wrap: wrap; gap: 5px 14px; margin-top: 7px; }
+.feedback-actions .text-button { font-size: 0.7rem; min-height: 34px; }
+.impact-panel {
+  margin-top: 22px;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.4fr);
+  gap: 24px;
+  align-items: center;
+}
+.impact-panel h2 { margin: 7px 0; }
+.impact-panel p { margin: 0; color: var(--muted); }
+.impact-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.impact-metrics div { min-height: 92px; padding: 14px 10px; border-radius: 12px; background: var(--light-blue); display: grid; align-content: center; gap: 4px; }
+.impact-metrics strong { font-size: 1.5rem; color: var(--blue); }
+.impact-metrics span { font-size: 0.66rem; color: var(--ink); }
+.impact-hotspots { grid-column: 1 / -1; font-size: 0.78rem; }
+.recognized-text h3 { margin: 0 0 12px; font-size: 1.1rem; }
+.recognized-text p { margin: 0 0 13px; white-space: pre-wrap; }
+.recognized-text small { display: block; margin-top: 14px; color: var(--muted); }
+.ocr-prices { display: grid; gap: 4px; margin-top: 14px; padding: 12px; border-radius: 10px; background: var(--light-blue); }
+.ocr-prices span { color: var(--blue); font-weight: 700; }
 .map-region {
   position: relative;
   min-height: 640px;
@@ -1381,6 +1418,7 @@ fieldset {
   .map-region {
     min-height: min(62vh, 560px);
   }
+  .impact-panel { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
   .topbar {
@@ -1600,6 +1638,8 @@ fieldset {
     max-height: none;
     padding: 20px;
   }
+  .impact-panel { padding: 20px; }
+  .impact-metrics { grid-template-columns: repeat(2, 1fr); }
   .access-page {
     max-width: 500px;
   }
