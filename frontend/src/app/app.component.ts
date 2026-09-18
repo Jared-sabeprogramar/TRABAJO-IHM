@@ -47,7 +47,9 @@ export class AppComponent {
   }
   private async respondToVoice(command: VoiceCommand) {
     const heard = this.normalize(command.transcript);
-    const wake = /\b(acces|access)\s+(escuchame|escucha|responde|responder|respond)\b/.exec(heard);
+    // Recognition engines often transcribe the app name as "acceso" or
+    // "axis". Treat those close phonetic variants as the wake phrase too.
+    const wake = /\b(acces|access|acceso|axes|axis)\s+(escuchame|escucha|responde|responder|respond)\b/.exec(heard);
     // An explicit wake phrase opens a short follow-up window. This lets a
     // person say "Acces responde", wait for the acknowledgement, then speak
     // naturally instead of having to fit the whole command in one sentence.

@@ -2,9 +2,6 @@
 @if (speech.assistantAwake()) {
   <p class="sr-only" role="status">Asistente listo para escuchar tu pedido.</p>
 }
-@if (speech.assistantMessage()) {
-  <p class="assistant-message" role="status">{{ speech.assistantMessage() }}</p>
-}
 <a class="skip-link" href="#main">Saltar al contenido</a>
 <header class="topbar">
   <a routerLink="/" class="brand" aria-label="Acces, inicio"
@@ -22,15 +19,6 @@
     ><a routerLink="/recientes" routerLinkActive="active">{{ language.t('readings') }}</a>
   </nav>
   <div class="header-actions">
-    <button
-      class="assistant-button"
-      [class.enabled]="speech.voiceSensitive()"
-      (click)="speech.enableVoiceAssistant()"
-      [attr.aria-label]="speech.voiceSensitive() ? 'Acces está listo para escucharte' : 'Hablar con Acces'"
-      [attr.aria-pressed]="speech.voiceSensitive()"
-    >
-      <app-icon name="mic" /><span>{{ speech.voiceSensitive() ? 'Acces listo' : 'Hablar con Acces' }}</span>
-    </button>
     <button
       class="icon-button"
       (click)="speech.toggleSound()"

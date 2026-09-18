@@ -45,14 +45,13 @@ export class SpeechService {
   listening = signal(false);
   /** True only after the wake phrase, while Acces is waiting for a request. */
   assistantAwake = signal(false);
-  assistantMessage = signal('');
   voiceCommand = signal<VoiceCommand | null>(null);
   settings = signal<VoiceSettings>({
     rate: 1,
     lang: 'es-PE',
     volume: 0.8,
     largeText: false,
-    voiceSensitive: false,
+    voiceSensitive: true,
   });
   private utterance?: SpeechSynthesisUtterance;
   private guidance?: SpeechSynthesisUtterance;
@@ -110,14 +109,10 @@ export class SpeechService {
   }
   /** Enables the wake-word listener from the visible app control, once. */
   enableVoiceAssistant() {
-    if (!this.voiceDetectionSupported) {
-      this.assistantMessage.set('La voz no está disponible aquí. Puedes usar los botones en pantalla.');
-      return;
-    }
+    if (!this.voiceDetectionSupported) return;
     this.voiceSensitive.set(true);
     this.settings.update((value) => ({ ...value, voiceSensitive: true }));
     try { localStorage.setItem('acces-settings', JSON.stringify(this.settings())); } catch {}
-    this.assistantMessage.set('Acces está listo. Di: Acces escúchame.');
     this.startVoiceListener();
   }
   beginAssistantTurn() {
@@ -307,10 +302,7 @@ export class SpeechService {
     recognition.lang = this.settings().lang;
     recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.onstart = () => {
-      this.listening.set(true);
-      this.assistantMessage.set('Acces está listo. Di: Acces escúchame.');
-    };
+    recognition.onstart = () => this.listening.set(true);
     recognition.onspeechstart = () => this.onVoiceDetected();
     recognition.onresult = (event) => this.onVoiceResult(event);
     recognition.onerror = (event) => {
@@ -319,9 +311,6 @@ export class SpeechService {
         this.voiceSensitive.set(false);
         this.settings.update((value) => ({ ...value, voiceSensitive: false }));
         try { localStorage.setItem('acces-settings', JSON.stringify(this.settings())); } catch {}
-        this.assistantMessage.set('Para hablar con Acces, permite el uso del micrófono.');
-      } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
-        this.assistantMessage.set('No pude escucharte ahora. Inténtalo nuevamente.');
       }
     };
     recognition.onend = () => {
