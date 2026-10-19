@@ -23,6 +23,17 @@ Las sesiones anónimas deben estar habilitadas en Supabase Auth. Para futuros pr
 
 ## Cloudflare
 
+En Workers → trabajo-ihm → Settings → Builds, con la raíz del repositorio como directorio:
+
+- Build command: `cd frontend && npm ci && npm run build:production`.
+- Deploy command: `npx wrangler deploy`.
+- Variables de **compilación**: `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY` (o `SUPABASE_ANON_KEY` pública).
+- Selecciona la rama `codex/proyecto-seguro-20261019` para publicar esta versión.
+
+El archivo `wrangler.jsonc` de la raíz permite ejecutar el despliegue desde ese directorio. Se conserva el de `frontend/` para el despliegue local desde esa carpeta. El comando anterior `npm run configure && npm run build` también detecta Workers Builds y genera ahora la configuración de producción validada. Los `.env` locales no se suben a GitHub ni aparecen automáticamente en Cloudflare.
+
+`wrangler versions upload` sube una versión; para activar directamente el despliegue utiliza `wrangler deploy`.
+
 Usa Node 22.12 o superior de la rama 22, o Node 24. Dentro de `frontend/`, copia `.env.production.example` a `.env.production.local` y guarda la URL y la clave **Publishable**. Nunca uses una clave secret o service_role en el frontend.
 
 ```powershell

@@ -1,5 +1,10 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
+if (process.env.WORKERS_CI === '1') {
+  console.log('Cloudflare: la configuración pública se valida durante la compilación de producción.');
+  process.exit(0);
+}
+
 const localEnvPath = new URL('../.env.local', import.meta.url);
 const localConfigPath = new URL('../src/assets/config.local.json', import.meta.url);
 
