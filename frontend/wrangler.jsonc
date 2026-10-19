@@ -1,0 +1,9 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "trabajo-ihm",
+  "compatibility_date": "2026-10-19",
+  "assets": {
+    "directory": "./dist/frontend/browser",
+    "not_found_handling": "single-page-application"
+  }
+}

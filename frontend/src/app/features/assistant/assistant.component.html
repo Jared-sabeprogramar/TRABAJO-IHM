@@ -1,0 +1,91 @@
+<div class="page assistant-page">
+  <header class="assistant-heading">
+    <div class="eyebrow">UNA CONVERSACIÓN CONTIGO</div>
+    <h1>Asistente de inteligencia artificial</h1>
+    <p>Habla con Acces. Estoy aquí para escucharte.</p>
+    <p class="assistant-provider" [class.connected]="mode === 'gemini'" role="status">{{ mode === 'gemini' ? 'Gemini conectado' : mode === 'basic' ? 'Modo básico · Gemini pendiente de configurar' : 'Comprobando conexión…' }}</p>
+  </header>
+  <section class="voice-stage" aria-label="Asistente de voz">
+    <div class="voice-orb-shell" [class.is-listening]="listening" [class.is-thinking]="pending" [class.is-speaking]="speaking">
+      <span class="voice-orbit orbit-one" aria-hidden="true"></span>
+      <span class="voice-orbit orbit-two" aria-hidden="true"></span>
+      <button class="voice-orb" type="button" (click)="talk()" [disabled]="pending && !voiceActive" [attr.aria-label]="voiceActive ? 'Finalizar conversación por voz' : 'Conversar por voz'" [attr.aria-pressed]="voiceActive" aria-describedby="voice-status voice-hint">
+        @if (voiceActive || speaking || pending) {
+          <span class="voice-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+        } @else { <app-icon name="mic" /> }
+      </button>
+    </div>
+    <h2 id="voice-status" class="voice-status" role="status">{{ voiceStatus }}</h2>
+    <p id="voice-hint" class="voice-hint">{{ voiceActive ? 'Volveré a escucharte al terminar mi respuesta. Toca el círculo para finalizar.' : 'Activa el micrófono una vez y conversa a tu ritmo.' }}</p>
+    @if (lastUserText || lastReply) {
+      <div class="voice-caption" translate="no" aria-live="polite">
+        @if (lastUserText) { <p class="voice-user-caption">Tú: {{ lastUserText }}</p> }
+        @if (lastReply) { <p>{{ lastReply }}</p> }
+      </div>
+    }
+    @if (error) { <p class="notice error" role="alert">{{ error }}</p> }
+    <div class="assistant-actions voice-tools">
+      @if (voiceActive) { <button class="button" type="button" (click)="endVoice()"><app-icon name="stop" />Finalizar conversación</button> }
+      <button class="button" type="button" (click)="showText = !showText"><app-icon name="text" />Escribir</button>
+      <button class="button" type="button" (click)="showJourneys = !showJourneys"><app-icon name="map" />Mis recorridos</button>
+      <button class="button" type="button" (click)="openHelp()"><app-icon name="shield" />Servicios de ayuda</button>
+    </div>
+    <p class="field-help voice-privacy">El micrófono está activo solo durante la conversación. Al enviar, Supabase y Gemini, si está conectado, procesan tu consulta. El dictado utiliza el proveedor de voz del navegador.</p>
+  </section>
+  <div class="assistant-layout">
+    <details class="assistant-card" [open]="showText" (toggle)="showText = conversationDetails.open" #conversationDetails>
+      <summary>Conversación y texto</summary>
+      <div class="assistant-actions">
+        <button class="button" type="button" (click)="silence()">Silenciar respuesta</button>
+        <button class="button" type="button" (click)="clear()" [disabled]="pending">Borrar conversación</button>
+      </div>
+      <div class="assistant-messages" role="log" aria-label="Mensajes" aria-live="polite" aria-relevant="additions" tabindex="0" translate="no">
+        @if (!messages.length) { <p>Hola. Puedes preguntar por un lugar registrado, consultar tus recorridos o decir «cuéntame un chiste».</p> }
+        @for (message of messages; track $index) {
+          <article class="assistant-message" [class.from-user]="message.role === 'user'"><strong>{{ message.role === 'user' ? 'Tú' : 'Acces' }}</strong><p>{{ message.text }}</p></article>
+        }
+      </div>
+      <form (ngSubmit)="send()">
+        <label for="assistant-text">Tu mensaje</label>
+        <textarea id="assistant-text" name="message" [(ngModel)]="text" maxlength="2000" rows="3" placeholder="¿Qué reportes tiene la biblioteca?"></textarea>
+        <button class="button primary" type="submit" [disabled]="pending || !text.trim()">Enviar mensaje</button>
+      </form>
+      <p class="field-help">Al enviar, tu conversación se procesa en Supabase y, si está conectado, Gemini. El dictado puede usar el proveedor de voz del navegador. La conversación solo se conserva en memoria de esta pantalla.</p>
+    </details>
+    <details class="assistant-card" [open]="showJourneys" (toggle)="showJourneys = journeyDetails.open" #journeyDetails>
+      <summary>Mis recorridos privados</summary>
+      <h2>Mis recorridos</h2>
+      <p>Acces recuerda tus recorridos frecuentes para personalizar las respuestas. No se reentrena el modelo ni se certifica que una ruta sea accesible.</p>
+      <label for="journey-name">Nombre del recorrido</label>
+      <input id="journey-name" [(ngModel)]="routeName" maxlength="80" placeholder="De casa a la biblioteca" [disabled]="journeys.recording()" />
+      <label class="assistant-check"><input type="checkbox" [(ngModel)]="consent" [disabled]="journeys.recording()" />Acepto registrar mi ubicación mientras activo el recorrido.</label>
+      <p class="field-help">Solo en este dispositivo: hasta 20 recorridos durante 30 días. Se detiene a los 30 minutos. Al salir de esta pantalla se descarta el recorrido sin guardar. No funciona en segundo plano con la pantalla bloqueada.</p>
+      @if (!journeys.recording()) {
+        <button class="button" type="button" (click)="journeys.start(routeName)" [disabled]="!consent || !routeName.trim()">Iniciar recorrido</button>
+      } @else {
+        <p role="status">Registrando recorrido: {{ journeys.count() }} puntos GPS.</p>
+        <button class="button primary" type="button" (click)="journeys.finish()">Detener y guardar recorrido</button>
+        <button class="button" type="button" (click)="journeys.cancel()">Descartar recorrido</button>
+      }
+      @if (journeys.error()) { <p class="notice error" role="alert">{{ journeys.error() }}</p> }
+      <label class="assistant-check"><input type="checkbox" [(ngModel)]="shareSummaries" />Usar los nombres, frecuencias y distancias de mis recorridos en esta conversación. Los puntos GPS no se envían al asistente.</label>
+      @for (journey of journeys.saved(); track journey.id) {
+        <div class="assistant-journey"><strong>{{ journey.name }}</strong><span>{{ journey.distance }} m · {{ journey.date | date:'dd/MM/yyyy' }}</span><button class="text-button" type="button" (click)="journeys.remove(journey.id)" [attr.aria-label]="'Eliminar recorrido ' + journey.name">Eliminar</button></div>
+      } @empty { <p class="field-help">Todavía no guardaste recorridos.</p> }
+      <h2>Servicios de ayuda</h2>
+      <p>Elige un servicio y confirma la llamada en tu teléfono.</p>
+      <button class="button primary" type="button" (click)="openHelp()">Servicios de ayuda</button>
+      <p class="field-help">Los reportes pueden estar incompletos. Consulta el entorno y las condiciones actuales antes de desplazarte.</p>
+    </details>
+  </div>
+</div>
+<dialog #helpDialog aria-labelledby="help-title">
+  <h2 id="help-title">Contactar un servicio de ayuda</h2>
+  <p>No se ha llamado a nadie. Al elegir un número se abrirá el marcador del dispositivo; confirma allí la llamada. En una computadora necesitas una aplicación de llamadas.</p>
+  <label for="help-country">País donde estás</label><select id="help-country" [(ngModel)]="country"><option value="PE">Perú</option><option value="other">Otro país</option></select>
+  @if (country === 'PE') {
+    <div class="assistant-actions"><a class="button primary" href="tel:105">Abrir marcador: Policía 105</a><a class="button primary" href="tel:116">Abrir marcador: Bomberos 116</a><a class="button primary" href="tel:106">Abrir marcador: SAMU 106</a></div>
+    <p class="field-help">La cobertura de SAMU depende de la región. <a href="https://www.gob.pe/547-telefonos-de-emergencia" target="_blank" rel="noopener">Consultar directorio oficial de Perú</a>.</p>
+  } @else { <p>Usa el número de emergencia oficial de tu país desde el teléfono. Los números anteriores corresponden a Perú.</p> }
+  <button class="button" type="button" (click)="helpDialog.close()">Cerrar sin llamar</button>
+</dialog>

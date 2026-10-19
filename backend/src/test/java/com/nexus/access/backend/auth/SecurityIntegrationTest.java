@@ -3,10 +3,11 @@ package com.nexus.access.backend.auth;
 import static org.junit.jupiter.api.Assertions.*;
 import java.net.URI; import java.net.http.*; import java.util.UUID;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test; import org.springframework.beans.factory.annotation.Autowired; import org.springframework.boot.test.context.SpringBootTest; import org.springframework.boot.test.web.server.LocalServerPort;
+import org.junit.jupiter.api.Test; import org.springframework.beans.factory.annotation.Autowired; import org.springframework.boot.test.context.SpringBootTest; import org.springframework.boot.test.web.server.LocalServerPort; import org.springframework.test.context.ActiveProfiles;
 import com.nexus.access.backend.user.UserRepository;
 
 @SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ActiveProfiles("test")
 class SecurityIntegrationTest {
 	@LocalServerPort int port; @Autowired UserRepository users;
 	final HttpClient client=HttpClient.newHttpClient(); final ObjectMapper json=new ObjectMapper().findAndRegisterModules();

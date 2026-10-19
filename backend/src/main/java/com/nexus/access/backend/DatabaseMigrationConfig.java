@@ -12,7 +12,8 @@ public class DatabaseMigrationConfig {
 	@Bean(initMethod = "migrate")
 	Flyway flyway(DataSource dataSource) {
 		return Flyway.configure().dataSource(dataSource).locations("classpath:db/migration")
-				.defaultSchema("public").validateOnMigrate(true).load();
+				.defaultSchema("public").validateOnMigrate(true).baselineOnMigrate(true)
+				.baselineVersion("0").load();
 	}
 	@Bean
 	static BeanFactoryPostProcessor flywayBeforeJpa() {

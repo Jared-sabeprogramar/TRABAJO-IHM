@@ -8,6 +8,15 @@
 
 # Node
 /node_modules
+.env
+.env.local
+.env.development.local
+.env.production.local
+environment.local.ts
+src/assets/config.local.json
+secrets.*
+!.env.example
+!.env.production.example
 npm-debug.log
 yarn-error.log
 
@@ -33,6 +42,8 @@ yarn-error.log
 .sass-cache/
 /connect.lock
 /coverage
+test-results/
+playwright-report/
 /libpeerconnection.log
 testem.log
 /typings

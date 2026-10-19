@@ -1,65 +1,35 @@
-# NEXUS ACCESS
+# Acces
 
-Plataforma inicial de accesibilidad urbana para personas con discapacidad.
+Aplicación de accesibilidad urbana: lector visual y de voz, identificación declarada por DNI, mapa comunitario de barreras y reportes con evidencia fotográfica.
 
-## Alcance de esta fase
+## Arquitectura activa
 
-Esta fase solo prepara la arquitectura base. No incluye autenticación, JWT, IA, mapas, reportes ni lógica de negocio.
+- `frontend/`: Angular, OCR local, síntesis de voz, dictado y mapa.
+- `supabase/`: Auth anónimo, PostGIS, Edge Functions, migraciones y pruebas.
+- `backend/`: servicio Java conservado por compatibilidad; no se inicia en el recorrido activo.
 
-## Estructura
+## Ejecutar localmente
 
-- `frontend/`: Angular 17+ con SCSS.
-- `backend/`: Spring Boot con Java 21 y Maven.
-- `database/`: scripts de inicialización de PostgreSQL y PostGIS.
-- `docs/`: documentación del proyecto.
-- `.github/`: espacio para automatización y configuración futura.
+1. Instala dependencias: `cd frontend; npm ci`.
+2. Inicia Supabase Local: `npx supabase start`.
+3. Aplica migraciones: `npx supabase db push --local`.
+4. Genera la configuración local: `powershell -ExecutionPolicy Bypass -File scripts/configure-local.ps1`.
+5. Inicia las funciones: `npx supabase functions serve --env-file supabase/.env.local`.
+6. Inicia la interfaz: `docker compose up -d --build`.
 
-## Requisitos
+Abre http://localhost:4200. Las instrucciones detalladas y la gestión de claves están en [docs/setup.md](docs/setup.md).
 
-- Docker y Docker Compose.
-- Node.js para desarrollo local del frontend.
-- Java 21 y Maven para desarrollo local del backend.
+## Verificación
 
-## Configuración
+La pantalla `/asistente` ofrece voz, texto, recorridos privados y servicios de ayuda. Consulta la configuración de Gemini y los límites del modo básico en [docs/assistant.md](docs/assistant.md).
 
-1. Copia `.env.example` a `.env`.
-2. Ajusta las credenciales locales si es necesario.
-3. No guardes credenciales reales en Git.
+Los lugares se registran automáticamente al enviar el primer reporte con nombre y coordenadas. Los reportes a menos de 25 metros se asocian al lugar existente; los más distantes crean otro. El mapa y la lista consultan los agregados guardados en Supabase y se actualizan tras el envío y cada 30 segundos. Las pruebas de base de datos revierten sus datos temporales.
 
-## Ejecución con Docker
-
-```bash
-docker compose up -d
-```
-
-Servicios:
-
-- Frontend: http://localhost:4200
-- Backend: http://localhost:8080/api/health
-- PostgreSQL: localhost:5432
-
-## Verificaciones esperadas
-
-- PostgreSQL inicia correctamente.
-- PostGIS está instalado y habilitado.
-- Spring Boot expone `GET /api/health`.
-- Angular arranca y puede llegar al backend mediante `/api`.
-
-## Desarrollo local
-
-Frontend:
+Desde `frontend/`:
 
 ```bash
-cd frontend
-npm install
-npm start
+npm test -- --watch=false
+npm run test:backend
+npm run test:e2e
+node scripts/test-report-photo.mjs
 ```
-
-Backend:
-
-```bash
-cd backend
-./mvnw spring-boot:run
-```
-
-En Windows también puedes usar `mvnw.cmd`.
